@@ -1,0 +1,78 @@
+qa-application/
+├── frontend/                      # React frontend application
+│   ├── public/                    # Static files
+│   ├── src/
+│   │   ├── components/           # Reusable React components
+│   │   │   ├── editor/          # Text editor related components
+│   │   │   │   ├── TextEditor.tsx
+│   │   │   │   ├── Toolbar.tsx
+│   │   │   │   └── VersionHistory.tsx
+│   │   │   ├── qa/              # Q&A related components
+│   │   │   │   ├── QuestionForm.tsx
+│   │   │   │   ├── AnswerDisplay.tsx
+│   │   │   │   └── SearchResults.tsx
+│   │   │   └── common/          # Shared components
+│   │   ├── hooks/               # Custom React hooks
+│   │   │   ├── useVersionControl.ts
+│   │   │   ├── useTextEditor.ts
+│   │   │   └── useAnalytics.ts
+│   │   ├── services/            # API integration services
+│   │   │   ├── qaService.ts
+│   │   │   ├── editorService.ts
+│   │   │   └── analyticsService.ts
+│   │   ├── utils/               # Utility functions
+│   │   ├── types/               # TypeScript type definitions
+│   │   ├── context/             # React context providers
+│   │   └── styles/              # Global styles and themes
+│   ├── tests/                   # Frontend tests
+│   └── package.json
+│
+├── backend/                      # Python backend application
+│   ├── app/
+│   │   ├── api/                 # API endpoints
+│   │   │   ├── routes/
+│   │   │   │   ├── qa.py
+│   │   │   │   ├── editor.py
+│   │   │   │   └── analytics.py
+│   │   │   └── middleware/
+│   │   ├── core/                # Core business logic
+│   │   │   ├── qa_engine/      # Q&A processing
+│   │   │   ├── text_processor/  # Text processing
+│   │   │   └── analytics/       # Analytics engine
+│   │   ├── db/                  # Database models and migrations
+│   │   │   ├── models/
+│   │   │   │   ├── question.py
+│   │   │   │   ├── answer.py
+│   │   │   │   ├── version.py
+│   │   │   │   └── user_preference.py
+│   │   │   └── migrations/
+│   │   ├── services/            # External service integrations
+│   │   └── utils/               # Utility functions
+│   ├── tests/                   # Backend tests
+│   ├── config/                  # Configuration files
+│   │   ├── development.py
+│   │   ├── production.py
+│   │   └── test.py
+│   └── requirements.txt
+│
+├── database/                     # Database scripts and schemas
+│   ├── migrations/
+│   ├── seeds/
+│   └── schemas/
+│
+├── infrastructure/               # Infrastructure as code
+│   ├── terraform/               # Infrastructure definitions
+│   └── docker/
+│       ├── frontend.Dockerfile
+│       ├── backend.Dockerfile
+│       └── docker-compose.yml
+│
+├── docs/                         # Documentation
+│   ├── api/                     # API documentation
+│   ├── architecture/            # Architecture decisions
+│   └── setup/                   # Setup instructions
+│
+└── scripts/                      # Utility scripts
+    ├── setup.sh
+    ├── deploy.sh
+    └── backup.sh
