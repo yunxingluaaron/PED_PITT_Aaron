@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+
+@import 'react-resizable/css/styles.css';
+
+.react-resizable-handle {
+  background-color: #e5e7eb;
+  border-radius: 2px;
+}
+
+.react-resizable-handle:hover {
+  background-color: #d1d5db;
+}
+
+.react-resizable-handle-s {
+  height: 10px;
+  bottom: -5px;
+}
+
+.react-resizable-handle-w {
+  width: 10px;
+  left: -5px;
+}
