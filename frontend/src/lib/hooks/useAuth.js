@@ -1,10 +1,11 @@
 // src/lib/hooks/useAuth.js
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  setAuthToken, 
-  removeAuthToken, 
+import {
+  setAuthToken,
+  removeAuthToken,
   getAuthToken,
-  isAuthenticated 
+  isAuthenticated,
+  registerUser // Import the registerUser function
 } from '../../services/auth';
 
 export const useAuth = () => {
@@ -69,6 +70,22 @@ export const useAuth = () => {
     }
   };
 
+    // Add the signup function
+  const signup = async (userData) => {
+    setIsLoading(true);
+    try {
+      const data = await registerUser(userData);
+      setAuthToken(data.token);
+      setUser(data.user);
+      setIsLoggedIn(true);
+      return data;
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       const token = getAuthToken();
@@ -94,5 +111,6 @@ export const useAuth = () => {
     login,
     logout,
     fetchUser,
+    signup,
   };
 };
