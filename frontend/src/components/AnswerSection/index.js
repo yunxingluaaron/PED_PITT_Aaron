@@ -32,6 +32,7 @@ export const AnswerSection = () => {
     <div className="h-full flex">
       <div className="flex-1 flex flex-col">
         <div className="flex-1 p-4">
+          <h2 className="text-xl font-bold mb-4">VineAI Generated</h2>
           <Editor
             value={editorContent}
             onChange={setEditorContent}
