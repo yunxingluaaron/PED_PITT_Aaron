@@ -28,6 +28,13 @@ export const AnswerSection = () => {
 
   const currentVersion = getCurrentVersion();
 
+  // Function to extract plain text from HTML content
+  const getPlainTextContent = (htmlContent) => {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    return tempDiv.textContent || tempDiv.innerText || '';
+  };
+
   return (
     <div className="h-full flex">
       <div className="flex-1 flex flex-col">
@@ -44,6 +51,7 @@ export const AnswerSection = () => {
           onBookmark={() => toggleBookmark(currentVersionId)}
           isLiked={currentVersion?.isLiked}
           isBookmarked={currentVersion?.isBookmarked}
+          textToCopy={getPlainTextContent(editorContent)} // Add this prop for copy functionality
         />
         {showComparison && (
           <VersionComparison

@@ -1,12 +1,23 @@
 // src/App.js
 import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './lib/hooks/useAuth';
+import LoginPage from './components/auth/LoginPage';
+import SignupPage from './components/auth/SignupPage';
 import Sidebar from './components/Layout/Sidebar';
 import ResizablePanel from './components/Layout/ResizablePanel';
 import QuestionSection from './components/QuestionSection';
 import AnswerSection from './components/AnswerSection';
 import ReferenceSection from './components/ReferenceSection';
 
-const App = () => {
+// Protected Route Component
+const PrivateRoute = ({ children }) => {
+  const { isLoggedIn } = useAuth();
+  return isLoggedIn ? children : <Navigate to="/login" />;
+};
+
+// Main Dashboard Layout Component
+const DashboardLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [dimensions, setDimensions] = useState({
     questions: { width: 800, height: 200 },
@@ -66,6 +77,48 @@ const App = () => {
         </ResizablePanel>
       </div>
     </div>
+  );
+};
+
+const App = () => {
+  const { isLoggedIn } = useAuth();
+
+  return (
+    <Router>
+      <Routes>
+        {/* Auth Routes */}
+        <Route 
+          path="/login" 
+          element={isLoggedIn ? <Navigate to="/dashboard" /> : <LoginPage />} 
+        />
+        <Route 
+          path="/signup" 
+          element={isLoggedIn ? <Navigate to="/dashboard" /> : <SignupPage />} 
+        />
+
+        {/* Protected Dashboard Route */}
+        <Route
+          path="/dashboard"
+          element={
+            <PrivateRoute>
+              <DashboardLayout />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Redirect root to dashboard or login based on auth state */}
+        <Route
+          path="/"
+          element={<Navigate to={isLoggedIn ? "/dashboard" : "/login"} />}
+        />
+
+        {/* Catch all route - redirect to dashboard or login */}
+        <Route
+          path="*"
+          element={<Navigate to={isLoggedIn ? "/dashboard" : "/login"} />}
+        />
+      </Routes>
+    </Router>
   );
 };
 
