@@ -1,10 +1,13 @@
+// src/App.js
 import React, { useState } from 'react';
 import Sidebar from './components/Layout/Sidebar';
 import ResizablePanel from './components/Layout/ResizablePanel';
+import QuestionSection from './components/QuestionSection';
+import AnswerSection from './components/AnswerSection';
+import ReferenceSection from './components/ReferenceSection';
 
 const App = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [questionInput, setQuestionInput] = useState('');
   const [dimensions, setDimensions] = useState({
     questions: { width: 800, height: 200 },
     answers: { width: 800, height: 400 },
@@ -22,12 +25,6 @@ const App = () => {
     }));
   };
 
-  const handleQuestionSubmit = (e) => {
-    e.preventDefault();
-    // Handle question submission here
-    console.log('Question submitted:', questionInput);
-  };
-
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
@@ -42,40 +39,9 @@ const App = () => {
             maxConstraints={[1200, 400]}
             resizeHandles={['s']}
           >
-            <div className="p-4">
-              <h2 className="text-xl font-bold mb-4">Questions Enter</h2>
-              
-              {/* Question input form */}
-              <form onSubmit={handleQuestionSubmit} className="mb-4">
-                <textarea
-                  value={questionInput}
-                  onChange={(e) => setQuestionInput(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg 
-                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                    min-h-[80px] resize-none"
-                  placeholder="Type your question here..."
-                />
-              </form>
-
-              {/* Dropdown menus */}
-              <div className="mt-4 flex gap-2">
-                {['Dropdown menu 1', 'Dropdown menu 2', 'Dropdown menu 3', 'Dropdown menu 4'].map((menu, index) => (
-                  <select 
-                    key={index} 
-                    className="border border-gray-300 p-2 rounded-lg focus:ring-2 
-                      focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option>{menu}</option>
-                    <option>Option 1</option>
-                    <option>Option 2</option>
-                    <option>Option 3</option>
-                  </select>
-                ))}
-              </div>
-            </div>
+            <QuestionSection />
           </ResizablePanel>
 
-          {/* Rest of the components remain the same */}
           <ResizablePanel
             width={dimensions.answers.width}
             height={dimensions.answers.height}
@@ -84,9 +50,7 @@ const App = () => {
             maxConstraints={[1200, 800]}
             resizeHandles={['s']}
           >
-            <div className="p-4">
-              <h2 className="text-xl font-bold">Answers Generated section</h2>
-            </div>
+            <AnswerSection />
           </ResizablePanel>
         </div>
 
@@ -98,9 +62,7 @@ const App = () => {
           maxConstraints={[500, 1000]}
           resizeHandles={['w']}
         >
-          <div className="p-4">
-            <h2 className="text-xl font-bold">Reference List</h2>
-          </div>
+          <ReferenceSection />
         </ResizablePanel>
       </div>
     </div>
