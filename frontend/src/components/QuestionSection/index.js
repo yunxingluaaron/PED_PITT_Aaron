@@ -2,9 +2,11 @@
 import React, { useState } from 'react';
 import QuestionInput from './QuestionInput';
 import DropdownMenu from './DropdownMenu';
-import { submitQuestion } from '../../services/questionApi';
+import { generateAnswer } from '../../services/questionApi';
 
-const QuestionSection = () => {
+const QuestionSection = (onAnswerGenerated) => {
+  const [question, setQuestion] = useState('');
+  const [loading, setLoading] = useState(false);
   const [questionInput, setQuestionInput] = useState('');
   const [dropdownValues, setDropdownValues] = useState({
     menu1: '',
@@ -15,7 +17,25 @@ const QuestionSection = () => {
 
   const handleQuestionSubmit = async (e) => {
     e.preventDefault();
-    await submitQuestion(questionInput);
+    if (!question.trim() || loading) return;
+
+    setLoading(true);
+    try {
+      const response = await generateAnswer({ 
+        message: question
+      });
+      
+      if (onAnswerGenerated) {
+        onAnswerGenerated(response);
+      }
+      
+      // Optionally clear the question after successful submission
+      setQuestion('');
+    } catch (error) {
+      console.error('Error submitting question:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDropdownChange = (menu) => (e) => {
@@ -36,9 +56,10 @@ const QuestionSection = () => {
     <div className="p-4">
       <h2 className="text-xl font-bold mb-4">Questions Enter</h2>
       <QuestionInput
-        value={questionInput}
-        onChange={(e) => setQuestionInput(e.target.value)}
+        value={question}
+        onChange={(value) => setQuestion(value)}
         onSubmit={handleQuestionSubmit}
+        loading={loading}
       />
       <div className="mt-4 flex gap-2">
         {dropdownMenus.map(menu => (

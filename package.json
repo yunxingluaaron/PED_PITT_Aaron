@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@radix-ui/react-select": "^2.1.4",
+    "axios": "^1.7.9",
+    "tailwindcss-radix": "^3.0.5"
+  }
+}

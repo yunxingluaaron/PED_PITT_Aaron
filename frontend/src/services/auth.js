@@ -1,5 +1,5 @@
 // src/services/auth.js
-const API_URL = 'http://localhost:5000';
+const API_URL = 'http://localhost:5000/api';
 
 export const loginUser = async (credentials) => {
   try {
@@ -24,6 +24,8 @@ export const loginUser = async (credentials) => {
 
 export const registerUser = async (userData) => {
   try {
+    console.log('Registration Data being sent:', userData); // Add this logging
+
     const response = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: {
@@ -33,12 +35,16 @@ export const registerUser = async (userData) => {
     });
 
     if (!response.ok) {
-      throw new Error('Registration failed');
+      // Add detailed error handling
+      const errorData = await response.json();
+      console.error('Registration Error:', errorData);
+      throw new Error(errorData.error || 'Registration failed');
     }
 
     const data = await response.json();
     return data;
   } catch (error) {
+    console.error('Registration error details:', error);
     throw error;
   }
 };

@@ -1,6 +1,6 @@
 # app/schemas.py
-from pydantic import BaseModel, EmailStr, constr
-from typing import Optional
+from pydantic import BaseModel, EmailStr, constr, Field
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 class UserBase(BaseModel):
@@ -36,3 +36,25 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     email: Optional[str] = None
+
+
+class MessageBase(BaseModel):
+    message: str = Field(..., min_length=1)
+    conversation_id: Optional[str] = None
+    response_type: Optional[str] = "text"
+
+class MessageResponse(BaseModel):
+    conversation_id: str
+    detailed_response: str
+    sources: List[str]
+    metadata: Dict[str, Any]
+    relationships: List[Dict[str, str]]
+    text_content: List[Dict[str, str]]
+
+class ConversationResponse(BaseModel):
+    id: str
+    messages: List[Dict[str, Any]]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

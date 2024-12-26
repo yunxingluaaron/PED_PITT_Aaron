@@ -18,7 +18,7 @@ export const useAuth = () => {
     
     try {
       const token = getAuthToken();
-      const response = await fetch('http://localhost:5000/auth/me', {
+      const response = await fetch('http://localhost:5000/api/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -45,30 +45,32 @@ export const useAuth = () => {
   const login = async (credentials) => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(credentials),
-      });
+        const response = await fetch('http://localhost:5000/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(credentials)
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Login failed');
-      }
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Login failed');
+        }
 
-      const data = await response.json();
-      setAuthToken(data.token);
-      setUser(data.user);
-      setIsLoggedIn(true);
-      return data;
+        setAuthToken(data.token);
+        setUser(data.user);
+        setIsLoggedIn(true);
+        return data;
     } catch (error) {
-      throw error;
+        console.error('Login error:', error);
+        throw error;
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
-  };
+};
 
     // Add the signup function
   const signup = async (userData) => {
@@ -89,7 +91,7 @@ export const useAuth = () => {
   const logout = async () => {
     try {
       const token = getAuthToken();
-      await fetch('http://localhost:5000/auth/logout', {
+      await fetch('http://localhost:5000/api/auth/logout', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
