@@ -1,3 +1,5 @@
+##__init__.py
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -31,18 +33,20 @@ def create_app(config_name=None):
     db.init_app(app)
     jwt.init_app(app)
     
-    # Configure CORS
+
+# Configure CORS
 # Configure CORS
     CORS(app, resources={
-        r"/api/*": {  # Changed from r"/*" to r"/api/*" to match your URL prefix
+        r"/api/*": {
             "origins": ["http://localhost:3000"],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"],
             "expose_headers": ["Content-Range", "X-Total-Count"],
-            "supports_credentials": True
+            "supports_credentials": True,
+            "allow_credentials": True  # Add this line
         }
     })
-    
+        
     # JWT configuration
     @jwt.token_in_blocklist_loader
     def check_if_token_is_revoked(jwt_header, jwt_payload):

@@ -1,13 +1,11 @@
-// src/components/QuestionSection/index.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import QuestionInput from './QuestionInput';
 import DropdownMenu from './DropdownMenu';
 import { generateAnswer } from '../../services/questionApi';
 
-const QuestionSection = (onAnswerGenerated) => {
+const QuestionSection = ({ onAnswerGenerated }) => {
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
-  const [questionInput, setQuestionInput] = useState('');
   const [dropdownValues, setDropdownValues] = useState({
     menu1: '',
     menu2: '',
@@ -15,24 +13,33 @@ const QuestionSection = (onAnswerGenerated) => {
     menu4: ''
   });
 
-  const handleQuestionSubmit = async (e) => {
-    e.preventDefault();
-    if (!question.trim() || loading) return;
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    console.log('Current token:', token); // Check if token exists
+  }, []);
+
+  const handleQuestionSubmit = async (value) => {
+    console.log('QuestionSection - handleQuestionSubmit called with:', value); // Debug log
+    if (!value.trim() || loading) {
+      console.log('QuestionSection - Validation failed', { value, loading }); // Debug log
+      return;
+    }
 
     setLoading(true);
     try {
-      const response = await generateAnswer({ 
-        message: question
+      console.log('QuestionSection - Calling generateAnswer'); // Debug log
+      const response = await generateAnswer({
+        message: value
       });
-      
+
+      console.log('QuestionSection - Response received:', response); // Debug log
       if (onAnswerGenerated) {
         onAnswerGenerated(response);
       }
-      
-      // Optionally clear the question after successful submission
+
       setQuestion('');
     } catch (error) {
-      console.error('Error submitting question:', error);
+      console.error('QuestionSection - Error:', error);
     } finally {
       setLoading(false);
     }
@@ -57,7 +64,10 @@ const QuestionSection = (onAnswerGenerated) => {
       <h2 className="text-xl font-bold mb-4">Questions Enter</h2>
       <QuestionInput
         value={question}
-        onChange={(value) => setQuestion(value)}
+        onChange={(newValue) => {
+          console.log('QuestionSection - Question changed:', newValue); // Debug log
+          setQuestion(newValue);
+        }}
         onSubmit={handleQuestionSubmit}
         loading={loading}
       />
