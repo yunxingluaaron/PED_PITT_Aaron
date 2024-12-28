@@ -1,3 +1,5 @@
+// frontend\src\components\AnswerSection\index.js
+
 import React, { useState, useEffect } from 'react';
 import Editor from './components/Editor';
 import ActionBar from './components/ActionBar';

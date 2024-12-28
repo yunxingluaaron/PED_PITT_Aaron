@@ -1,3 +1,5 @@
+// frontend\src\components\AnswerSection\hooks\useAnswerGeneration.js
+
 import { useState, useCallback } from 'react';
 import { generateAnswer } from '../../../services/questionApi';
 

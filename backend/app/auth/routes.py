@@ -64,7 +64,8 @@ def verify_password(password, stored_hash):
         return False
 
 def generate_token(user_id, email):
-    return create_access_token(identity=email)
+    # Convert user_id to string to ensure consistent type handling
+    return create_access_token(identity=str(user_id))
 
 # Add OPTIONS method handling for preflight requests
 @auth_bp.route('/login', methods=['OPTIONS'])
@@ -198,8 +199,9 @@ def login():
 @jwt_required()
 def get_current_user():
     try:
-        current_user_email = get_jwt_identity()
-        user = User.query.filter_by(email=current_user_email).first()
+        user_id = get_jwt_identity()
+        # Convert string id back to integer
+        user = User.query.filter_by(id=int(user_id)).first()
         
         if not user:
             return jsonify({'error': 'User not found'}), 404
@@ -220,7 +222,7 @@ def get_current_user():
 def change_password():
     try:
         current_user_email = get_jwt_identity()
-        user = User.query.filter_by(email=current_user_email).first()
+        user = User.query.filter_by(id=current_user_email).first()
         
         data = request.get_json()
         if not all(k in data for k in ('currentPassword', 'newPassword')):

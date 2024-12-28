@@ -35,6 +35,10 @@ def submit_question():
 
         # Validate request data
         data = request.get_json()
+
+        logger.info(f"in the chat api, the data is {data}")
+
+
         if not data or 'message' not in data:
             logger.warning("Missing message in request")
             return jsonify({'error': 'Message is required'}), 400
@@ -84,9 +88,9 @@ def submit_question():
                 conversation_id=conversation.id,
                 content=message,
                 response=analysis_results['analysis'],
-                metadata=analysis_results['metadata'],
-                sources=analysis_results['sources'],
-                relationships=[rel for result in hybrid_results 
+                response_metadata=analysis_results['metadata'],
+                source_data=analysis_results['sources'],
+                relationship_data=[rel for result in hybrid_results 
                              for rel in result.get('relationships', [])]
             )
             db.session.add(new_message)

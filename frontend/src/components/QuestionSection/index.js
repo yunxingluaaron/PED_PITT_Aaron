@@ -1,3 +1,5 @@
+//frontend\src\components\QuestionSection\index.js
+
 import React, { useState, useEffect } from 'react';
 import QuestionInput from './QuestionInput';
 import DropdownMenu from './DropdownMenu';
@@ -34,7 +36,9 @@ const QuestionSection = ({ onAnswerGenerated }) => {
 
       console.log('QuestionSection - Response received:', response); // Debug log
       if (onAnswerGenerated) {
-        onAnswerGenerated(response);
+        onAnswerGenerated(response.detail_response
+
+        );
       }
 
       setQuestion('');
