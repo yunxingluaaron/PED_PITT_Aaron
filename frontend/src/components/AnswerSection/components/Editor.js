@@ -45,24 +45,15 @@ const MenuBar = ({ editor }) => {
   );
 };
 
-export const Editor = ({ value, onChange }) => {
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Highlight,
-    ],
-    content: value,
-    onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
-    },
-  });
-
+const Editor = ({ value, onChange }) => {
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <MenuBar editor={editor} />
-      <div className="p-4">
-        <EditorContent editor={editor} />
-      </div>
+    <div className="w-full min-h-[200px] border rounded-lg p-4">
+      <textarea
+        className="w-full h-full min-h-[180px] resize-none focus:outline-none"
+        value={value || ''} // Ensure a default empty string
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="AI generated response will appear here..."
+      />
     </div>
   );
 };

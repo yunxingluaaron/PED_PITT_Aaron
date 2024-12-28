@@ -19,11 +19,21 @@ const PrivateRoute = ({ children }) => {
 // Main Dashboard Layout Component
 const DashboardLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState('');
+  const [currentAnswer, setCurrentAnswer] = useState(null);
   const [dimensions, setDimensions] = useState({
     questions: { width: 800, height: 200 },
     answers: { width: 800, height: 400 },
     reference: { width: 300, height: 600 }
   });
+
+  const handleQuestionSubmit = (question) => {
+    setCurrentQuestion(question);
+  };
+
+  const handleAnswerGenerated = (answer) => {
+    setCurrentAnswer(answer);
+  };
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -50,7 +60,7 @@ const DashboardLayout = () => {
             maxConstraints={[1200, 400]}
             resizeHandles={['s']}
           >
-            <QuestionSection />
+            <QuestionSection onQuestionSubmit={handleQuestionSubmit} />
           </ResizablePanel>
 
           <ResizablePanel
@@ -61,7 +71,10 @@ const DashboardLayout = () => {
             maxConstraints={[1200, 800]}
             resizeHandles={['s']}
           >
-            <AnswerSection />
+            <AnswerSection 
+              question={currentQuestion}
+              onAnswerGenerated={handleAnswerGenerated} 
+            />
           </ResizablePanel>
         </div>
 
@@ -73,13 +86,12 @@ const DashboardLayout = () => {
           maxConstraints={[500, 1000]}
           resizeHandles={['w']}
         >
-          <ReferenceSection />
+          <ReferenceSection answer={currentAnswer} />
         </ResizablePanel>
       </div>
     </div>
   );
 };
-
 const App = () => {
   const { isLoggedIn } = useAuth();
 

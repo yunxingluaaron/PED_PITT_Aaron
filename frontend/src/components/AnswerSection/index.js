@@ -1,6 +1,5 @@
 // frontend\src\components\AnswerSection\index.js
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Editor from './components/Editor';
 import ActionBar from './components/ActionBar';
 import VersionControl from './components/VersionControl';
@@ -9,7 +8,7 @@ import useVersionHistory from './hooks/useVersionHistory';
 import useAnswerGeneration from './hooks/useAnswerGeneration';
 import SourcesDisplay from './components/SourcesDisplay';
 
-export const AnswerSection = ({ question }) => {
+export const AnswerSection = ({ question, onAnswerGenerated }) => {
   const {
     loading,
     error,
@@ -28,35 +27,72 @@ export const AnswerSection = ({ question }) => {
     getCurrentVersion,
     toggleLike,
     toggleBookmark,
-  } = useVersionHistory(answer || '');
+  } = useVersionHistory('');
 
   const [editorContent, setEditorContent] = useState('');
   const [showComparison, setShowComparison] = useState(false);
+  const processedQuestionRef = useRef('');
 
+  // Handle answer updates
   useEffect(() => {
     if (answer) {
+      console.log('Setting editor content:', answer); // Debug log
       setEditorContent(answer);
-      addVersion(answer);
+      if (!versions.some(v => v.content === answer)) {
+        addVersion(answer);
+      }
     }
-  }, [answer, addVersion]);
+  }, [answer]);
 
+  // Handle question processing
   useEffect(() => {
-    if (question) {
-      generateAnswerFromQuestion(question);
-    }
-  }, [question, generateAnswerFromQuestion]);
+    const handleAnswer = async () => {
+      if (question && 
+          typeof question === 'string' && 
+          question !== processedQuestionRef.current) {
+        processedQuestionRef.current = question;
+        try {
+          const response = await generateAnswerFromQuestion(question);
+          console.log('Response received:', response); // Debug log
+          
+          if (response && response.detailed_response) {
+            // Update editor content directly with the detailed response
+            setEditorContent(response.detailed_response);
+            
+            if (onAnswerGenerated) {
+              onAnswerGenerated({
+                answer: response.detailed_response,
+                sources: response.sources || [],
+                relationships: response.relationships || [],
+                metadata: response.metadata || {}
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Failed to generate answer:', error);
+          setEditorContent('Error generating response: ' + error.message);
+        }
+      }
+    };
 
-  const handleSave = () => {
-    addVersion(editorContent);
-  };
+    handleAnswer();
+  }, [question]);
 
+  // Memoize getCurrentVersion result
   const currentVersion = getCurrentVersion();
 
-  const getPlainTextContent = (htmlContent) => {
+  // Memoize handleSave to prevent unnecessary rerenders
+  const handleSave = useCallback(() => {
+    if (editorContent && !versions.some(v => v.content === editorContent)) {
+      addVersion(editorContent);
+    }
+  }, [editorContent, versions, addVersion]);
+
+  const getPlainTextContent = useCallback((htmlContent) => {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlContent;
     return tempDiv.textContent || tempDiv.innerText || '';
-  };
+  }, []);
 
   if (error) {
     return <div className="text-red-500 p-4">Error: {error}</div>;
@@ -75,7 +111,7 @@ export const AnswerSection = ({ question }) => {
           ) : (
             <>
               <Editor
-                value={editorContent}
+                value={editorContent || ''} // Ensure a default empty string if null
                 onChange={setEditorContent}
               />
               {sources && sources.length > 0 && (
@@ -95,7 +131,7 @@ export const AnswerSection = ({ question }) => {
         />
         {showComparison && (
           <VersionComparison
-            originalText={versions[0].content}
+            originalText={versions[0]?.content || ''}
             modifiedText={editorContent}
           />
         )}

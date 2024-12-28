@@ -5,7 +5,7 @@ import QuestionInput from './QuestionInput';
 import DropdownMenu from './DropdownMenu';
 import { generateAnswer } from '../../services/questionApi';
 
-const QuestionSection = ({ onAnswerGenerated }) => {
+const QuestionSection = ({ onQuestionSubmit }) => {
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
   const [dropdownValues, setDropdownValues] = useState({
@@ -21,26 +21,15 @@ const QuestionSection = ({ onAnswerGenerated }) => {
   }, []);
 
   const handleQuestionSubmit = async (value) => {
-    console.log('QuestionSection - handleQuestionSubmit called with:', value); // Debug log
+    console.log('QuestionSection - handleQuestionSubmit:', value); // Debug log
     if (!value.trim() || loading) {
-      console.log('QuestionSection - Validation failed', { value, loading }); // Debug log
       return;
     }
 
     setLoading(true);
     try {
-      console.log('QuestionSection - Calling generateAnswer'); // Debug log
-      const response = await generateAnswer({
-        message: value
-      });
-
-      console.log('QuestionSection - Response received:', response); // Debug log
-      if (onAnswerGenerated) {
-        onAnswerGenerated(response.detail_response
-
-        );
-      }
-
+      // Send just the message text
+      onQuestionSubmit(value);
       setQuestion('');
     } catch (error) {
       console.error('QuestionSection - Error:', error);
@@ -69,7 +58,7 @@ const QuestionSection = ({ onAnswerGenerated }) => {
       <QuestionInput
         value={question}
         onChange={(newValue) => {
-          console.log('QuestionSection - Question changed:', newValue); // Debug log
+          console.log('QuestionSection - Question changed:', newValue);
           setQuestion(newValue);
         }}
         onSubmit={handleQuestionSubmit}
