@@ -16,27 +16,51 @@ def hash_password(password):
         print(f"Hashing error: {str(e)}")
         raise
 
-def verify_password(password, hashed):
+from hashlib import scrypt
+import hmac
+
+def verify_password(password, stored_hash):
     """Verify a stored password against one provided by user"""
     try:
-        # Ensure password is in bytes
-        if isinstance(password, str):
-            password = password.encode('utf-8')
+        # Parse the stored hash
+        if not stored_hash.startswith('scrypt:'):
+            return False
             
-        # Handle hex-encoded string
-        if isinstance(hashed, str):
-            if hashed.startswith('\\x'):
-                # Remove the '\\x' prefix and decode from hex
-                hashed = bytes.fromhex(hashed[2:])
-            else:
-                hashed = hashed.encode('utf-8')
-                
-        return bcrypt.checkpw(password, hashed)
+        # Split into algorithm parameters and hash parts
+        algo_params, salt, hash_value = stored_hash.split('$')
+        
+        # Parse algorithm parameters
+        _, n, r, p = algo_params.split(':')
+        
+        # Convert parameters to integers
+        n = int(n)  # CPU/Memory cost parameter
+        r = int(r)  # block size parameter
+        p = int(p)  # parallelization parameter
+        
+        # Generate new hash with same parameters
+        password_bytes = password.encode('utf-8')
+        salt_bytes = salt.encode('utf-8')
+        
+        # Calculate new hash
+        new_hash = scrypt(
+            password=password_bytes,
+            salt=salt_bytes,
+            n=n,
+            r=r,
+            p=p,
+            maxmem=2**30,  # 1GB max memory
+            dklen=64  # match your hash length
+        ).hex()
+        
+        # Compare hashes using constant-time comparison
+        return hmac.compare_digest(hash_value, new_hash)
         
     except Exception as e:
         print(f"Verification error: {str(e)}")
         print(f"Password type: {type(password)}")
-        print(f"Hash type after conversion: {type(hashed)}")
+        # Add more detailed error logging
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
         return False
 
 def generate_token(user_id, email):
@@ -143,28 +167,14 @@ def login():
 
         print("User found:", user is not None)
         print("Current stored hash:", repr(user.password_hash))
-        print("Stored hash type:", type(user.password_hash))
-
-        # Convert the stored hash from hex format
-        try:
-            if isinstance(user.password_hash, str) and user.password_hash.startswith('\\x'):
-                decoded_hash = bytes.fromhex(user.password_hash[2:])
-                print("Decoded hash:", repr(decoded_hash))
-                is_valid = bcrypt.checkpw(
-                    data['password'].encode('utf-8'),
-                    decoded_hash
-                )
-            else:
-                is_valid = verify_password(data['password'], user.password_hash)
-
-            if not is_valid:
-                return jsonify({'error': 'Invalid email or password'}), 401
-
-        except Exception as e:
-            print("Password verification error:", str(e))
-            import traceback
-            print("Traceback:", traceback.format_exc())
-            return jsonify({'error': 'Password verification failed'}), 500
+        print("Hash components:", user.password_hash.split('$'))
+        
+        # Verify password using scrypt
+        is_valid = verify_password(data['password'], user.password_hash)
+        print("Password verification result:", is_valid)
+        
+        if not is_valid:
+            return jsonify({'error': 'Invalid email or password'}), 401
 
         # Generate token
         token = generate_token(user.id, user.email)
@@ -180,6 +190,8 @@ def login():
 
     except Exception as e:
         print("Login error:", str(e))
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
         return jsonify({'error': str(e)}), 500
 
 @auth_bp.route('/me', methods=['GET'])
