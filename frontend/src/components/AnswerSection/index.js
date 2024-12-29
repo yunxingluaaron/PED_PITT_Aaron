@@ -8,7 +8,7 @@ import useVersionHistory from './hooks/useVersionHistory';
 import useAnswerGeneration from './hooks/useAnswerGeneration';
 import SourcesDisplay from './components/SourcesDisplay';
 
-export const AnswerSection = ({ question, onAnswerGenerated }) => {
+export const AnswerSection = ({ question, onAnswerGenerated, onSourcesUpdate }) => {
   const {
     loading,
     error,
@@ -43,6 +43,12 @@ export const AnswerSection = ({ question, onAnswerGenerated }) => {
       }
     }
   }, [answer]);
+
+  useEffect(() => {
+    if (sources && onSourcesUpdate) {
+      onSourcesUpdate(sources);
+    }
+  }, [sources, onSourcesUpdate]);
 
   // Handle question processing
   useEffect(() => {
@@ -109,15 +115,10 @@ export const AnswerSection = ({ question, onAnswerGenerated }) => {
               <div className="h-4 bg-gray-200 rounded w-1/2"></div>
             </div>
           ) : (
-            <>
-              <Editor
-                value={editorContent || ''} // Ensure a default empty string if null
-                onChange={setEditorContent}
-              />
-              {sources && sources.length > 0 && (
-                <SourcesDisplay sources={sources} />
-              )}
-            </>
+            <Editor
+              value={editorContent || ''} 
+              onChange={setEditorContent}
+            />
           )}
         </div>
         <ActionBar

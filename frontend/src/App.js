@@ -21,6 +21,7 @@ const DashboardLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [currentAnswer, setCurrentAnswer] = useState(null);
+  const [sources, setSources] = useState([]);
   const [dimensions, setDimensions] = useState({
     questions: { width: 800, height: 200 },
     answers: { width: 800, height: 400 },
@@ -33,6 +34,14 @@ const DashboardLayout = () => {
 
   const handleAnswerGenerated = (answer) => {
     setCurrentAnswer(answer);
+    // If answer contains sources, update them
+    if (answer && answer.sources) {
+      setSources(answer.sources);
+    }
+  };
+
+  const handleSourcesUpdate = (newSources) => {
+    setSources(newSources);
   };
 
   const toggleSidebar = () => {
@@ -47,7 +56,7 @@ const DashboardLayout = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-gray-50">
       <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
       
       <div className="flex-1 flex">
@@ -73,7 +82,8 @@ const DashboardLayout = () => {
           >
             <AnswerSection 
               question={currentQuestion}
-              onAnswerGenerated={handleAnswerGenerated} 
+              onAnswerGenerated={handleAnswerGenerated}
+              onSourcesUpdate={handleSourcesUpdate}
             />
           </ResizablePanel>
         </div>
@@ -85,13 +95,15 @@ const DashboardLayout = () => {
           minConstraints={[200, 400]}
           maxConstraints={[500, 1000]}
           resizeHandles={['w']}
+          className="border-l border-gray-200 bg-white"
         >
-          <ReferenceSection answer={currentAnswer} />
+          <ReferenceSection sources={sources} />
         </ResizablePanel>
       </div>
     </div>
   );
 };
+
 const App = () => {
   const { isLoggedIn } = useAuth();
 
