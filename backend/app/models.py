@@ -1,3 +1,5 @@
+##app\models.py
+# app/models.py
 from datetime import datetime
 from app.database import db
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -9,12 +11,13 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False) 
+    password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), nullable=False, default='user')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     is_active = db.Column(db.Boolean, default=True)
     conversations = db.relationship('Conversation', backref='user', lazy=True)
+    questions = db.relationship('Question', backref='user', lazy=True)
 
     def set_password(self, password):
         """Set hashed password."""
@@ -74,4 +77,36 @@ class Message(db.Model):
             'relationships': self.relationship_data,
             'created_at': self.created_at.isoformat(),
             'message_type': self.message_type
+        }
+
+class Question(db.Model):
+    __tablename__ = 'questions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversations.id'))
+    versions = db.relationship('VersionHistory', backref='question', lazy=True)
+    is_archived = db.Column(db.Boolean, default=False)
+
+class VersionHistory(db.Model):
+    __tablename__ = 'version_history'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    question_id = db.Column(db.Integer, db.ForeignKey('questions.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    type = db.Column(db.String(10))  # 'ai' or 'user'
+    is_liked = db.Column(db.Boolean, default=False)
+    is_bookmarked = db.Column(db.Boolean, default=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'content': self.content,
+            'timestamp': self.timestamp.isoformat(),
+            'type': self.type,
+            'is_liked': self.is_liked,
+            'is_bookmarked': self.is_bookmarked
         }

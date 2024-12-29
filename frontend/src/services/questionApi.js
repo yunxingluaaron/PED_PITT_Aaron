@@ -28,7 +28,11 @@ export const generateAnswer = async ({ message, options = {}, conversation_id = 
       withCredentials: true
     });
 
-    return response.data;
+    if (response.data) {
+      // Dispatch event to notify question history to refresh
+      window.dispatchEvent(new Event('questionAdded'));
+      return response.data;
+    }
   } catch (error) {
     console.error('API Error:', error.response || error);
     if (error.response?.status === 401) {
@@ -50,5 +54,50 @@ export const getConversationHistory = async (conversation_id) => {
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to fetch conversation history');
+  }
+};
+
+export const getQuestionHistory = async () => {
+  const token = localStorage.getItem('auth_token');
+  try {
+    const response = await axios.get(`${API_BASE_URL}/questions`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch question history:', error);
+    throw error;
+  }
+};
+
+export const getVersionHistory = async (questionId) => {
+  const token = localStorage.getItem('auth_token');
+  try {
+    const response = await axios.get(`${API_BASE_URL}/questions/${questionId}/versions`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch version history:', error);
+    throw error;
+  }
+};
+
+export const deleteQuestion = async (questionId) => {
+  const token = localStorage.getItem('auth_token');
+  try {
+    const response = await axios.delete(`${API_BASE_URL}/questions/${questionId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Failed to delete question:', error);
+    throw error;
   }
 };

@@ -1,39 +1,73 @@
-// src/components/AnswerSection/hooks/useVersionHistory.js
-import { useState, useCallback } from 'react';
+// components/AnswerSection/hooks/useVersionHistory.js
+import { useState, useCallback, useEffect } from 'react';
+import axios from 'axios';
 
-const useVersionHistory = (initialContent = '') => {
-  const [versions, setVersions] = useState(() => initialContent ? [{
-    id: 1,
-    content: initialContent,
-    timestamp: new Date().toISOString(),
-    type: 'ai',
-    isLiked: false,
-    isBookmarked: false,
-  }] : []);
-  
-  const [currentVersionId, setCurrentVersionId] = useState(versions[0]?.id || null);
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
 
-  const addVersion = useCallback((content, type = 'user') => {
-    if (!content) return;
+const useVersionHistory = (questionId, initialContent = '') => {
+  const [versions, setVersions] = useState([]);
+  const [currentVersionId, setCurrentVersionId] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Load versions when questionId changes
+  useEffect(() => {
+    const loadVersions = async () => {
+      if (questionId) {
+        try {
+          const response = await axios.get(
+            `${API_BASE_URL}/questions/${questionId}/versions`,
+            {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+              }
+            }
+          );
+          setVersions(response.data);
+          setCurrentVersionId(response.data[response.data.length - 1]?.id || null);
+        } catch (error) {
+          console.error('Failed to load versions:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadVersions();
+  }, [questionId]);
+
+  const addVersion = useCallback(async (content, type = 'user') => {
+    if (!content || !questionId) return;
     
-    setVersions(prev => {
-      const newId = prev.length > 0 ? Math.max(...prev.map(v => v.id)) + 1 : 1;
-      const newVersion = {
-        id: newId,
-        content,
-        timestamp: new Date().toISOString(),
-        type,
-        isLiked: false,
-        isBookmarked: false,
-      };
-      return [...prev, newVersion];
-    });
-    
-    setCurrentVersionId(prev => {
-      const newId = versions.length > 0 ? Math.max(...versions.map(v => v.id)) + 1 : 1;
-      return newId;
-    });
-  }, [versions]);
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/questions/${questionId}/versions`,
+        {
+          content,
+          type,
+          timestamp: new Date().toISOString(),
+          is_liked: false,
+          is_bookmarked: false
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          }
+        }
+      );
+      
+      const newVersion = response.data;
+      setVersions(prev => [...prev, newVersion]);
+      setCurrentVersionId(newVersion.id);
+      
+      // Dispatch event to notify question history to refresh
+      window.dispatchEvent(new Event('questionUpdated'));
+      
+      return newVersion;
+    } catch (error) {
+      console.error('Failed to save version:', error);
+      throw error;
+    }
+  }, [questionId]);
 
   const getCurrentVersion = useCallback(() => {
     return versions.find(v => v.id === currentVersionId) || versions[versions.length - 1] || null;
@@ -60,6 +94,7 @@ const useVersionHistory = (initialContent = '') => {
     currentVersionId,
     setCurrentVersionId,
     addVersion,
+    loading,
     getCurrentVersion,
     toggleLike,
     toggleBookmark,

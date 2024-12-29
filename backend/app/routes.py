@@ -1,15 +1,18 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from .models import User, db
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.database import db
+from app.models import User, Question, VersionHistory, Conversation, Message
 from sqlalchemy.exc import SQLAlchemyError
-
-
+from datetime import datetime
+import uuid
+import logging
 ########## 关于 回答功能的 api ###########
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.database import db
 from app.models import User, Conversation, Message
+from app.models import VersionHistory, Question
 from app.schemas import MessageBase, MessageResponse
 from app.elasticsearch_querier import ElasticsearchQuerier
 import uuid
@@ -22,28 +25,26 @@ logger = logging.getLogger(__name__)
 # Create blueprint
 api = Blueprint('api', __name__)
 
+
+
 # Initialize ElasticsearchQuerier
 es_querier = ElasticsearchQuerier()
 
+# Updated submit_question route
 @api.route('/chat', methods=['POST'])
 @jwt_required()
 def submit_question():
     try:
-        # Get user ID from JWT token
         user_id = get_jwt_identity()
         logger.info(f"Processing chat request for user ID: {user_id}")
 
-        # Validate request data
         data = request.get_json()
-
         logger.info(f"in the chat api, the data is {data}")
-
 
         if not data or 'message' not in data:
             logger.warning("Missing message in request")
             return jsonify({'error': 'Message is required'}), 400
 
-        # Get user
         user = User.query.get(user_id)
         if not user:
             logger.error(f"User not found for ID: {user_id}")
@@ -52,8 +53,8 @@ def submit_question():
         message = data['message']
         conversation_id = data.get('conversation_id')
 
-        # Handle conversation
         try:
+            # Handle conversation
             if conversation_id:
                 conversation = Conversation.query.filter_by(
                     conversation_id=conversation_id,
@@ -69,8 +70,16 @@ def submit_question():
                     user_id=user_id
                 )
                 db.session.add(conversation)
-                db.session.commit()
-                logger.info(f"Created new conversation: {conversation_id}")
+                db.session.flush()
+
+            # Create question record
+            new_question = Question(
+                user_id=user_id,
+                content=message,
+                conversation_id=conversation.id
+            )
+            db.session.add(new_question)
+            db.session.flush()
 
             # Generate answer
             try:
@@ -94,11 +103,30 @@ def submit_question():
                              for rel in result.get('relationships', [])]
             )
             db.session.add(new_message)
+
+            # Create version history entries
+            user_version = VersionHistory(
+                question_id=new_question.id,
+                content=message,
+                type='user',
+                timestamp=datetime.utcnow()
+            )
+            db.session.add(user_version)
+
+            ai_version = VersionHistory(
+                question_id=new_question.id,
+                content=analysis_results['analysis'],
+                type='ai',
+                timestamp=datetime.utcnow()
+            )
+            db.session.add(ai_version)
+
             db.session.commit()
 
             # Prepare response
             response_data = {
                 'conversation_id': conversation_id,
+                'question_id': new_question.id,
                 'detailed_response': analysis_results['analysis'],
                 'sources': analysis_results['sources'],
                 'metadata': analysis_results['metadata'],
@@ -156,3 +184,96 @@ def get_conversation(conversation_id):
     except Exception as e:
         logger.error(f"Error in get_conversation: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
+    
+
+@api.route('/questions', methods=['GET'])
+@jwt_required()
+def get_questions():
+    try:
+        user_id = get_jwt_identity()
+        questions = Question.query.filter_by(
+            user_id=user_id,
+            is_archived=False
+        ).order_by(Question.created_at.desc()).all()
+        
+        return jsonify([{
+            'id': q.id,
+            'content': q.content,
+            'created_at': q.created_at.isoformat(),
+            'conversation_id': q.conversation_id
+        } for q in questions]), 200
+    except Exception as e:
+        logger.error(f"Error in get_questions: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@api.route('/questions/<int:question_id>/versions', methods=['POST'])
+@jwt_required()
+def add_version(question_id):
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        question = Question.query.filter_by(id=question_id, user_id=user_id).first()
+        if not question:
+            return jsonify({'error': 'Question not found'}), 404
+
+        new_version = VersionHistory(
+            question_id=question_id,
+            content=data['content'],
+            type=data['type'],
+            is_liked=data.get('is_liked', False),
+            is_bookmarked=data.get('is_bookmarked', False)
+        )
+        
+        db.session.add(new_version)
+        db.session.commit()
+        
+        return jsonify(new_version.to_dict()), 201
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        logger.error(f"Database error in add_version: {str(e)}")
+        return jsonify({'error': 'Database error'}), 500
+
+@api.route('/questions/<int:question_id>/versions', methods=['GET'])
+@jwt_required()
+def get_versions(question_id):
+    try:
+        user_id = get_jwt_identity()
+        question = Question.query.filter_by(id=question_id, user_id=user_id).first()
+        if not question:
+            return jsonify({'error': 'Question not found'}), 404
+
+        versions = VersionHistory.query.filter_by(question_id=question_id).all()
+        return jsonify([v.to_dict() for v in versions]), 200
+    except Exception as e:
+        logger.error(f"Error in get_versions: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+    
+
+@api.route('/questions/<int:question_id>', methods=['DELETE'])
+@jwt_required()
+def delete_question(question_id):
+    try:
+        user_id = get_jwt_identity()
+        
+        question = Question.query.filter_by(
+            id=question_id,
+            user_id=user_id
+        ).first()
+        
+        if not question:
+            return jsonify({'error': 'Question not found'}), 404
+            
+        # Delete associated versions first
+        VersionHistory.query.filter_by(question_id=question_id).delete()
+        
+        # Delete the question
+        db.session.delete(question)
+        db.session.commit()
+        
+        return jsonify({'message': 'Question deleted successfully'}), 200
+        
+    except Exception as e:
+        logger.error(f"Error deleting question: {str(e)}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete question'}), 500

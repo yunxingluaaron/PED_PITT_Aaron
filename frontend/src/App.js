@@ -10,43 +10,69 @@ import QuestionSection from './components/QuestionSection';
 import AnswerSection from './components/AnswerSection';
 import ReferenceSection from './components/ReferenceSection';
 
-// Protected Route Component
 const PrivateRoute = ({ children }) => {
   const { isLoggedIn } = useAuth();
   return isLoggedIn ? children : <Navigate to="/login" />;
 };
 
-// Main Dashboard Layout Component
 const DashboardLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [currentAnswer, setCurrentAnswer] = useState(null);
   const [sources, setSources] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedHistoryQuestion, setSelectedHistoryQuestion] = useState(null);
   const [dimensions, setDimensions] = useState({
     questions: { width: 800, height: 200 },
     answers: { width: 800, height: 400 },
     reference: { width: 300, height: 600 }
   });
 
+  const handleQuestionSelect = (question) => {
+    if (question.isFromHistory) {
+      // For historical questions, just load the existing data
+      setIsGenerating(false);
+      setSelectedHistoryQuestion(question);
+      setCurrentQuestion(question.content);
+      
+      const answer = {
+        conversation_id: question.conversation_id,
+        detailed_response: question.response,
+        sources: question.source_data || [],
+        metadata: question.response_metadata || {},
+        isHistoricalAnswer: true  // Flag to indicate this is a historical answer
+      };
+      
+      setCurrentAnswer(answer);
+      setSources(question.source_data || []);
+    }
+  };
+
+
   const handleQuestionSubmit = async (question) => {
-    try {
-      setIsGenerating(true);
-      setCurrentQuestion(question);
-    } catch (error) {
-      console.error('Error submitting question:', error);
-    } finally {
-      // Note: we'll let the AnswerSection control when generation is complete
-      // through the handleAnswerGenerated callback
+    // Only generate new answers for new questions
+    if (!selectedHistoryQuestion?.isFromHistory || question !== selectedHistoryQuestion.content) {
+      try {
+        setIsGenerating(true);
+        setCurrentQuestion(question);
+        setSelectedHistoryQuestion(null);  // Reset history selection for new questions
+        setCurrentAnswer(null);  // Clear previous answer
+      } catch (error) {
+        console.error('Error submitting question:', error);
+        setIsGenerating(false);
+      }
     }
   };
 
   const handleAnswerGenerated = (answer) => {
-    setCurrentAnswer(answer);
-    setIsGenerating(false);
-    // If answer contains sources, update them
-    if (answer && answer.sources) {
-      setSources(answer.sources);
+    // Only handle answer generation for new questions
+    if (!answer.isHistoricalAnswer) {
+      setCurrentAnswer(answer);
+      setIsGenerating(false);
+      if (answer && answer.sources) {
+        setSources(answer.sources);
+      }
+      window.dispatchEvent(new Event('questionAdded'));
     }
   };
 
@@ -71,7 +97,11 @@ const DashboardLayout = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      <Sidebar isCollapsed={isCollapsed} toggleSidebar={toggleSidebar} />
+      <Sidebar 
+        isCollapsed={isCollapsed} 
+        toggleSidebar={toggleSidebar}
+        onQuestionSelect={handleQuestionSelect}
+      />
       
       <div className="flex-1 flex">
         <div className="flex-1 p-4 flex flex-col gap-4">
@@ -86,6 +116,7 @@ const DashboardLayout = () => {
             <QuestionSection 
               onQuestionSubmit={handleQuestionSubmit}
               isGenerating={isGenerating}
+              initialQuestion={selectedHistoryQuestion?.content}
             />
           </ResizablePanel>
 
@@ -103,6 +134,8 @@ const DashboardLayout = () => {
               onSourcesUpdate={handleSourcesUpdate}
               onError={handleGenerationError}
               isGenerating={isGenerating}
+              selectedHistoryQuestion={selectedHistoryQuestion}
+              currentAnswer={currentAnswer}
             />
           </ResizablePanel>
         </div>
@@ -122,14 +155,12 @@ const DashboardLayout = () => {
     </div>
   );
 };
-
 const App = () => {
   const { isLoggedIn } = useAuth();
 
   return (
     <Router>
       <Routes>
-        {/* Auth Routes */}
         <Route 
           path="/login" 
           element={isLoggedIn ? <Navigate to="/dashboard" /> : <LoginPage />} 
@@ -138,8 +169,6 @@ const App = () => {
           path="/signup" 
           element={isLoggedIn ? <Navigate to="/dashboard" /> : <SignupPage />} 
         />
-
-        {/* Protected Dashboard Route */}
         <Route
           path="/dashboard"
           element={
@@ -148,14 +177,10 @@ const App = () => {
             </PrivateRoute>
           }
         />
-
-        {/* Redirect root to dashboard or login based on auth state */}
         <Route
           path="/"
           element={<Navigate to={isLoggedIn ? "/dashboard" : "/login"} />}
         />
-
-        {/* Catch all route - redirect to dashboard or login */}
         <Route
           path="*"
           element={<Navigate to={isLoggedIn ? "/dashboard" : "/login"} />}
