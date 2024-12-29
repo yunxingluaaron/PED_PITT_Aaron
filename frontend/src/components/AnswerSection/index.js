@@ -1,4 +1,4 @@
-// frontend\src\components\AnswerSection\index.js
+// src/components/AnswerSection/index.js
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Editor from './components/Editor';
 import ActionBar from './components/ActionBar';
@@ -6,9 +6,8 @@ import VersionControl from './components/VersionControl';
 import VersionComparison from './components/VersionComparison';
 import useVersionHistory from './hooks/useVersionHistory';
 import useAnswerGeneration from './hooks/useAnswerGeneration';
-import SourcesDisplay from './components/SourcesDisplay';
 
-export const AnswerSection = ({ question, onAnswerGenerated, onSourcesUpdate }) => {
+export const AnswerSection = ({ question, onAnswerGenerated, onSourcesUpdate, isGenerating }) => {
   const {
     loading,
     error,
@@ -30,25 +29,39 @@ export const AnswerSection = ({ question, onAnswerGenerated, onSourcesUpdate }) 
   } = useVersionHistory('');
 
   const [editorContent, setEditorContent] = useState('');
+  const [originalContent, setOriginalContent] = useState('');
   const [showComparison, setShowComparison] = useState(false);
   const processedQuestionRef = useRef('');
 
-  // Handle answer updates
+  // Get current version using the provided function
+  const currentVersion = getCurrentVersion();
+
+  // Handle answer updates from AI
   useEffect(() => {
     if (answer) {
-      console.log('Setting editor content:', answer); // Debug log
       setEditorContent(answer);
+      setOriginalContent(answer);
+      // Add the initial AI response as a version
       if (!versions.some(v => v.content === answer)) {
-        addVersion(answer);
+        addVersion(answer, 'ai'); // Added type parameter
       }
     }
-  }, [answer]);
+  }, [answer, versions, addVersion]);
+
+    // Handle version selection
+  useEffect(() => {
+    const selectedVersion = getCurrentVersion();
+    if (selectedVersion) {
+      setEditorContent(selectedVersion.content);
+    }
+  }, [currentVersionId, getCurrentVersion]);
 
   useEffect(() => {
     if (sources && onSourcesUpdate) {
       onSourcesUpdate(sources);
     }
   }, [sources, onSourcesUpdate]);
+
 
   // Handle question processing
   useEffect(() => {
@@ -59,11 +72,10 @@ export const AnswerSection = ({ question, onAnswerGenerated, onSourcesUpdate }) 
         processedQuestionRef.current = question;
         try {
           const response = await generateAnswerFromQuestion(question);
-          console.log('Response received:', response); // Debug log
           
           if (response && response.detailed_response) {
-            // Update editor content directly with the detailed response
             setEditorContent(response.detailed_response);
+            setOriginalContent(response.detailed_response);
             
             if (onAnswerGenerated) {
               onAnswerGenerated({
@@ -82,17 +94,23 @@ export const AnswerSection = ({ question, onAnswerGenerated, onSourcesUpdate }) 
     };
 
     handleAnswer();
-  }, [question]);
+  }, [question, generateAnswerFromQuestion, onAnswerGenerated]);
 
-  // Memoize getCurrentVersion result
-  const currentVersion = getCurrentVersion();
+  const handleReset = useCallback(() => {
+    setEditorContent(originalContent);
+  }, [originalContent]);
 
-  // Memoize handleSave to prevent unnecessary rerenders
+  const handleClear = useCallback(() => {
+    setEditorContent('');
+  }, []);
+
+  // Updated handleSave to save the current editor content
   const handleSave = useCallback(() => {
-    if (editorContent && !versions.some(v => v.content === editorContent)) {
-      addVersion(editorContent);
+    if (editorContent && editorContent.trim()) {
+      // Add current editor content as a new version
+      addVersion(editorContent, 'user');
     }
-  }, [editorContent, versions, addVersion]);
+  }, [editorContent, addVersion]);
 
   const getPlainTextContent = useCallback((htmlContent) => {
     const tempDiv = document.createElement('div');
@@ -110,7 +128,7 @@ export const AnswerSection = ({ question, onAnswerGenerated, onSourcesUpdate }) 
         <div className="flex-1 p-4 overflow-hidden flex flex-col">
           <h2 className="text-xl font-bold mb-4">AI Generated Response</h2>
           <div className="flex-1 overflow-hidden">
-            {loading ? (
+            {loading || isGenerating ? (
               <div className="animate-pulse h-full bg-white rounded-lg border p-4">
                 <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
                 <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
@@ -120,8 +138,10 @@ export const AnswerSection = ({ question, onAnswerGenerated, onSourcesUpdate }) 
               </div>
             ) : (
               <Editor
-                value={editorContent || ''} 
+                value={editorContent}
                 onChange={setEditorContent}
+                onReset={handleReset}
+                onClear={handleClear}
               />
             )}
           </div>
