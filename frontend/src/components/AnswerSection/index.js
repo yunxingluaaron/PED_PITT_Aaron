@@ -107,19 +107,24 @@ export const AnswerSection = ({ question, onAnswerGenerated, onSourcesUpdate }) 
   return (
     <div className="h-full flex">
       <div className="flex-1 flex flex-col">
-        <div className="flex-1 p-4">
+        <div className="flex-1 p-4 overflow-hidden flex flex-col">
           <h2 className="text-xl font-bold mb-4">AI Generated Response</h2>
-          {loading ? (
-            <div className="animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-            </div>
-          ) : (
-            <Editor
-              value={editorContent || ''} 
-              onChange={setEditorContent}
-            />
-          )}
+          <div className="flex-1 overflow-hidden">
+            {loading ? (
+              <div className="animate-pulse h-full bg-white rounded-lg border p-4">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-2/3 mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            ) : (
+              <Editor
+                value={editorContent || ''} 
+                onChange={setEditorContent}
+              />
+            )}
+          </div>
         </div>
         <ActionBar
           onSave={handleSave}

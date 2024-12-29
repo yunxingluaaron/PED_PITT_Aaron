@@ -1,13 +1,11 @@
-//frontend\src\components\QuestionSection\index.js
-
+// src/components/QuestionSection/index.js
 import React, { useState, useEffect } from 'react';
 import QuestionInput from './QuestionInput';
 import DropdownMenu from './DropdownMenu';
-import { generateAnswer } from '../../services/questionApi';
 
-const QuestionSection = ({ onQuestionSubmit }) => {
+const QuestionSection = ({ onQuestionSubmit, isGenerating }) => {
   const [question, setQuestion] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [localLoading, setLocalLoading] = useState(false);
   const [dropdownValues, setDropdownValues] = useState({
     menu1: '',
     menu2: '',
@@ -16,25 +14,24 @@ const QuestionSection = ({ onQuestionSubmit }) => {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    console.log('Current token:', token); // Check if token exists
-  }, []);
+    // Reset local loading state when generation is complete
+    if (!isGenerating && localLoading) {
+      setLocalLoading(false);
+    }
+  }, [isGenerating]);
 
   const handleQuestionSubmit = async (value) => {
-    console.log('QuestionSection - handleQuestionSubmit:', value); // Debug log
-    if (!value.trim() || loading) {
+    if (!value.trim() || localLoading) {
       return;
     }
 
-    setLoading(true);
+    setLocalLoading(true);
     try {
-      // Send just the message text
-      onQuestionSubmit(value);
-      setQuestion('');
+      await onQuestionSubmit(value);
+      // Don't clear the question here - let the user decide
     } catch (error) {
       console.error('QuestionSection - Error:', error);
-    } finally {
-      setLoading(false);
+      setLocalLoading(false); // Reset loading on error
     }
   };
 
@@ -53,16 +50,14 @@ const QuestionSection = ({ onQuestionSubmit }) => {
   ];
 
   return (
-    <div className="p-4">
+    <div className={`p-4 transition-opacity duration-200 ${localLoading || isGenerating ? 'opacity-50' : 'opacity-100'}`}>
       <h2 className="text-xl font-bold mb-4">Questions Enter</h2>
       <QuestionInput
         value={question}
-        onChange={(newValue) => {
-          console.log('QuestionSection - Question changed:', newValue);
-          setQuestion(newValue);
-        }}
+        onChange={(newValue) => setQuestion(newValue)}
         onSubmit={handleQuestionSubmit}
-        loading={loading}
+        loading={localLoading || isGenerating}
+        onClear={() => setQuestion('')}
       />
       <div className="mt-4 flex gap-2">
         {dropdownMenus.map(menu => (
@@ -72,6 +67,7 @@ const QuestionSection = ({ onQuestionSubmit }) => {
             options={menu.options}
             value={dropdownValues[menu.id]}
             onChange={handleDropdownChange(menu.id)}
+            disabled={localLoading || isGenerating}
           />
         ))}
       </div>

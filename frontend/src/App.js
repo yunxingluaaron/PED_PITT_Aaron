@@ -22,18 +22,28 @@ const DashboardLayout = () => {
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [currentAnswer, setCurrentAnswer] = useState(null);
   const [sources, setSources] = useState([]);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [dimensions, setDimensions] = useState({
     questions: { width: 800, height: 200 },
     answers: { width: 800, height: 400 },
     reference: { width: 300, height: 600 }
   });
 
-  const handleQuestionSubmit = (question) => {
-    setCurrentQuestion(question);
+  const handleQuestionSubmit = async (question) => {
+    try {
+      setIsGenerating(true);
+      setCurrentQuestion(question);
+    } catch (error) {
+      console.error('Error submitting question:', error);
+    } finally {
+      // Note: we'll let the AnswerSection control when generation is complete
+      // through the handleAnswerGenerated callback
+    }
   };
 
   const handleAnswerGenerated = (answer) => {
     setCurrentAnswer(answer);
+    setIsGenerating(false);
     // If answer contains sources, update them
     if (answer && answer.sources) {
       setSources(answer.sources);
@@ -42,6 +52,10 @@ const DashboardLayout = () => {
 
   const handleSourcesUpdate = (newSources) => {
     setSources(newSources);
+  };
+
+  const handleGenerationError = () => {
+    setIsGenerating(false);
   };
 
   const toggleSidebar = () => {
@@ -69,7 +83,10 @@ const DashboardLayout = () => {
             maxConstraints={[1200, 400]}
             resizeHandles={['s']}
           >
-            <QuestionSection onQuestionSubmit={handleQuestionSubmit} />
+            <QuestionSection 
+              onQuestionSubmit={handleQuestionSubmit}
+              isGenerating={isGenerating}
+            />
           </ResizablePanel>
 
           <ResizablePanel
@@ -84,6 +101,8 @@ const DashboardLayout = () => {
               question={currentQuestion}
               onAnswerGenerated={handleAnswerGenerated}
               onSourcesUpdate={handleSourcesUpdate}
+              onError={handleGenerationError}
+              isGenerating={isGenerating}
             />
           </ResizablePanel>
         </div>

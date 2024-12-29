@@ -11,8 +11,7 @@ import {
   Highlighter,
   AlignLeft,
   AlignCenter,
-  AlignRight,
-  Quote
+  AlignRight
 } from 'lucide-react';
 
 const MenuBar = ({ editor }) => {
@@ -31,6 +30,7 @@ const MenuBar = ({ editor }) => {
       <Icon size={16} className="text-gray-700" />
     </button>
   );
+
 
   const Divider = () => (
     <div className="w-px h-6 bg-gray-300 mx-1" />
@@ -102,6 +102,7 @@ const Editor = ({ value, onChange }) => {
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
+    editable: false, // Make the editor read-only
   });
 
   React.useEffect(() => {
@@ -111,10 +112,12 @@ const Editor = ({ value, onChange }) => {
   }, [value, editor]);
 
   return (
-    <div className="w-full border rounded-lg overflow-hidden bg-white">
+    <div className="w-full border rounded-lg overflow-hidden bg-white h-full flex flex-col">
       <MenuBar editor={editor} />
-      <div className="p-4 min-h-[200px] prose max-w-none">
-        <EditorContent editor={editor} />
+      <div className="flex-1 overflow-auto">
+        <div className="p-4 prose max-w-none min-h-full">
+          <EditorContent editor={editor} className="min-h-full" />
+        </div>
       </div>
     </div>
   );
