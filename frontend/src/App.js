@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/hooks/useAuth';
 import LoginPage from './components/auth/LoginPage';
@@ -28,39 +28,59 @@ const DashboardLayout = () => {
     reference: { width: 300, height: 600 }
   });
 
+  useEffect(() => {
+    console.log('🔄 selectedHistoryQuestion changed:', selectedHistoryQuestion);
+  }, [selectedHistoryQuestion]);
+
+  useEffect(() => {
+    console.log('🔄 currentQuestion changed:', currentQuestion);
+  }, [currentQuestion]);
+
+  useEffect(() => {
+    console.log('🔄 isGenerating changed:', isGenerating);
+  }, [isGenerating]);
+
   const handleQuestionSelect = (question) => {
+    console.log('🔵 handleQuestionSelect called with:', question);
+    
     if (question.isFromHistory) {
-      // For historical questions, just load the existing data
-      setIsGenerating(false);
-      setSelectedHistoryQuestion(question);
-      setCurrentQuestion(question.content);
-      
-      const answer = {
+      console.log('🔵 Processing historical question');
+      // Set states in correct order
+      setCurrentAnswer({
         conversation_id: question.conversation_id,
         detailed_response: question.response,
         sources: question.source_data || [],
         metadata: question.response_metadata || {},
-        isHistoricalAnswer: true  // Flag to indicate this is a historical answer
-      };
-      
-      setCurrentAnswer(answer);
+        isHistoricalAnswer: true
+      });
       setSources(question.source_data || []);
+      setCurrentQuestion(question.content);
+      setSelectedHistoryQuestion(question);
+      setIsGenerating(false);
     }
   };
-
-
+  
   const handleQuestionSubmit = async (question) => {
-    // Only generate new answers for new questions
-    if (!selectedHistoryQuestion?.isFromHistory || question !== selectedHistoryQuestion.content) {
-      try {
-        setIsGenerating(true);
-        setCurrentQuestion(question);
-        setSelectedHistoryQuestion(null);  // Reset history selection for new questions
-        setCurrentAnswer(null);  // Clear previous answer
-      } catch (error) {
-        console.error('Error submitting question:', error);
-        setIsGenerating(false);
-      }
+    console.log('🔵 handleQuestionSubmit called:', {
+      question,
+      isHistorical: selectedHistoryQuestion?.isFromHistory
+    });
+  
+    // If it's not a new question (i.e., same as history), don't proceed
+    if (selectedHistoryQuestion?.isFromHistory && 
+        question === selectedHistoryQuestion.content) {
+      console.log('🔵 Skipping submission for historical question');
+      return;
+    }
+  
+    try {
+      setIsGenerating(true);
+      setCurrentQuestion(question);
+      setSelectedHistoryQuestion(null);
+      setCurrentAnswer(null);
+    } catch (error) {
+      console.error('Error submitting question:', error);
+      setIsGenerating(false);
     }
   };
 
@@ -117,6 +137,7 @@ const DashboardLayout = () => {
               onQuestionSubmit={handleQuestionSubmit}
               isGenerating={isGenerating}
               initialQuestion={selectedHistoryQuestion?.content}
+              selectedHistoryQuestion={selectedHistoryQuestion}  // Pass the full history object
             />
           </ResizablePanel>
 
@@ -155,6 +176,8 @@ const DashboardLayout = () => {
     </div>
   );
 };
+
+
 const App = () => {
   const { isLoggedIn } = useAuth();
 

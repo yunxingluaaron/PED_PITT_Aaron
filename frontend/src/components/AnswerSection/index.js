@@ -7,7 +7,14 @@ import VersionComparison from './components/VersionComparison';
 import useVersionHistory from './hooks/useVersionHistory';
 import useAnswerGeneration from './hooks/useAnswerGeneration';
 
-export const AnswerSection = ({ question, onAnswerGenerated, onSourcesUpdate, isGenerating }) => {
+export const AnswerSection = ({ 
+  question, 
+  onAnswerGenerated, 
+  onSourcesUpdate, 
+  isGenerating,
+  selectedHistoryQuestion,
+  currentAnswer 
+}) => {
   const {
     loading,
     error,
@@ -36,19 +43,29 @@ export const AnswerSection = ({ question, onAnswerGenerated, onSourcesUpdate, is
   // Get current version using the provided function
   const currentVersion = getCurrentVersion();
 
-  // Handle answer updates from AI
+  // Handle answer updates from AI or history
   useEffect(() => {
-    if (answer) {
+    if (currentAnswer?.isHistoricalAnswer) {
+      console.log('📜 Setting content from historical answer');
+      setEditorContent(currentAnswer.detailed_response);
+      setOriginalContent(currentAnswer.detailed_response);
+      if (!versions.some(v => v.content === currentAnswer.detailed_response)) {
+        addVersion(currentAnswer.detailed_response, 'ai');
+      }
+      if (onSourcesUpdate) {
+        onSourcesUpdate(currentAnswer.sources || []);
+      }
+    } else if (answer) {
+      console.log('🤖 Setting content from new AI answer');
       setEditorContent(answer);
       setOriginalContent(answer);
-      // Add the initial AI response as a version
       if (!versions.some(v => v.content === answer)) {
-        addVersion(answer, 'ai'); // Added type parameter
+        addVersion(answer, 'ai');
       }
     }
-  }, [answer, versions, addVersion]);
+  }, [answer, currentAnswer, versions, addVersion, onSourcesUpdate]);
 
-    // Handle version selection
+  // Handle version selection
   useEffect(() => {
     const selectedVersion = getCurrentVersion();
     if (selectedVersion) {
@@ -57,21 +74,33 @@ export const AnswerSection = ({ question, onAnswerGenerated, onSourcesUpdate, is
   }, [currentVersionId, getCurrentVersion]);
 
   useEffect(() => {
-    if (sources && onSourcesUpdate) {
+    if (sources && onSourcesUpdate && !currentAnswer?.isHistoricalAnswer) {
       onSourcesUpdate(sources);
     }
-  }, [sources, onSourcesUpdate]);
-
+  }, [sources, onSourcesUpdate, currentAnswer]);
 
   // Handle question processing
   useEffect(() => {
     const handleAnswer = async () => {
       if (question && 
           typeof question === 'string' && 
-          question !== processedQuestionRef.current) {
+          question !== processedQuestionRef.current &&
+          !currentAnswer?.isHistoricalAnswer) { // Skip if it's a historical answer
+        
+        console.log('🔄 Processing new question:', question);
         processedQuestionRef.current = question;
+        
         try {
-          const response = await generateAnswerFromQuestion(question);
+          // Pass historical data if available
+          const options = selectedHistoryQuestion?.isFromHistory ? {
+            isHistoricalAnswer: true,
+            conversation_id: selectedHistoryQuestion.conversation_id,
+            response: selectedHistoryQuestion.response,
+            source_data: selectedHistoryQuestion.source_data,
+            response_metadata: selectedHistoryQuestion.response_metadata
+          } : {};
+
+          const response = await generateAnswerFromQuestion(question, options);
           
           if (response && response.detailed_response) {
             setEditorContent(response.detailed_response);
@@ -82,7 +111,8 @@ export const AnswerSection = ({ question, onAnswerGenerated, onSourcesUpdate, is
                 answer: response.detailed_response,
                 sources: response.sources || [],
                 relationships: response.relationships || [],
-                metadata: response.metadata || {}
+                metadata: response.metadata || {},
+                isHistoricalAnswer: options.isHistoricalAnswer
               });
             }
           }
@@ -94,7 +124,7 @@ export const AnswerSection = ({ question, onAnswerGenerated, onSourcesUpdate, is
     };
 
     handleAnswer();
-  }, [question, generateAnswerFromQuestion, onAnswerGenerated]);
+  }, [question, generateAnswerFromQuestion, onAnswerGenerated, currentAnswer, selectedHistoryQuestion]);
 
   const handleReset = useCallback(() => {
     setEditorContent(originalContent);
@@ -104,10 +134,8 @@ export const AnswerSection = ({ question, onAnswerGenerated, onSourcesUpdate, is
     setEditorContent('');
   }, []);
 
-  // Updated handleSave to save the current editor content
   const handleSave = useCallback(() => {
     if (editorContent && editorContent.trim()) {
-      // Add current editor content as a new version
       addVersion(editorContent, 'user');
     }
   }, [editorContent, addVersion]);

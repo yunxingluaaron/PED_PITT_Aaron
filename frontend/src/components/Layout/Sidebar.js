@@ -14,7 +14,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useAuth } from '../../lib/hooks/useAuth';
-import { getQuestionHistory, deleteQuestion } from '../../services/questionApi';
+import { getQuestionHistory, deleteQuestion, getQuestionDetails } from '../../services/questionApi';
 
 const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
   const navigate = useNavigate();
@@ -64,26 +64,35 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
     }
   };
 
-  const handleQuestionClick = (question, event) => {
-    // Prevent triggering if clicking the delete button
-    if (event.target.closest('.delete-button')) {
-      return;
+// Sidebar.js
+const handleQuestionClick = async (question, event) => {
+  console.log('🖱️ Question clicked:', question);
+  
+  // Prevent triggering if clicking the delete button
+  if (event.target.closest('.delete-button')) {
+    console.log('🚫 Delete button clicked, ignoring question selection');
+    return;
+  }
+  
+  if (onQuestionSelect) {
+    try {
+      console.log('🔍 Fetching full question details for ID:', question.id);
+      const fullQuestionData = await getQuestionDetails(question.id);
+      
+      console.log('📦 Full question data received:', fullQuestionData);
+      
+      const questionWithHistory = {
+        ...fullQuestionData,
+        isFromHistory: true
+      };
+      
+      console.log('🎯 Calling onQuestionSelect with:', questionWithHistory);
+      onQuestionSelect(questionWithHistory);
+    } catch (error) {
+      console.error('💥 Failed to fetch question details:', error);
     }
-    
-    if (onQuestionSelect) {
-      // Pass the complete question object with all its data
-      onQuestionSelect({
-        id: question.id,
-        content: question.content,
-        response: question.response,
-        source_data: question.source_data,
-        response_metadata: question.response_metadata,
-        conversation_id: question.conversation_id,
-        created_at: question.created_at,
-        isFromHistory: true  // Add this flag to indicate it's from history
-      });
-    }
-  };
+  }
+};
 
   const handleDeleteQuestion = async (questionId, event) => {
     event.stopPropagation(); // Prevent triggering the question selection
