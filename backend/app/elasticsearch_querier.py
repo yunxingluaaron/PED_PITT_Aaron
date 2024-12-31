@@ -33,6 +33,8 @@ class ElasticsearchQuerier:
                 
             self.index_name = index_name
             logger.info(f"Successfully initialized ElasticsearchQuerier with index: {index_name}")
+
+            self._initialize_style_templates()
             
         except Exception as e:
             logger.error(f"Error initializing ElasticsearchQuerier: {str(e)}")
@@ -275,12 +277,133 @@ class ElasticsearchQuerier:
             logger.error(f"Error in hybrid search: {str(e)}")
             raise
 
-    def process_search_results(self, results: list, query: str, parameters: dict = None) -> Dict[str, Any]:
-        """Process search results and get OpenAI analysis with specific citations."""
+    def _initialize_style_templates(self):
+        """Initialize comprehensive style templates with distinct characteristics."""
+        self.style_map = {
+            'tone': {
+                'friendly': {
+                    'description': "Use casual, warm language with first-person pronouns and conversational phrases.",
+                    'markers': [
+                        "Use 'I' and 'we' pronouns frequently",
+                        "Include conversational transitions like 'you see,' and 'let me explain'",
+                        "Break down complex terms immediately after using them"
+                    ],
+                    'example': "I want to help you understand what's happening with your child's condition. You see, when we talk about sickle cell disease..."
+                },
+                'balanced': {
+                    'description': "Blend professional expertise with accessible explanations.",
+                    'markers': [
+                        "Balance technical terms with plain language explanations",
+                        "Use measured, clear language",
+                        "Maintain professional distance while being approachable"
+                    ],
+                    'example': "Sickle cell disease affects the red blood cells. This means that the cells that carry oxygen through the body become shaped like crescents instead of their normal round shape."
+                },
+                'formal': {
+                    'description': "Employ academic language and structured medical discourse.",
+                    'markers': [
+                        "Use precise medical terminology",
+                        "Maintain third-person perspective",
+                        "Employ formal transition phrases and discourse markers"
+                    ],
+                    'example': "Clinical manifestations of sickle cell disease include vaso-occlusive events characterized by acute pain episodes."
+                }
+            },
+            'detailLevel': {
+                'brief': {
+                    'description': "Provide essential points only with minimal elaboration.",
+                    'markers': [
+                        "Focus on key takeaways",
+                        "Limit background information",
+                        "Use concise sentence structures"
+                    ],
+                    'example': "The primary treatment goals are pain management and prevention of complications."
+                },
+                'moderate': {
+                    'description': "Balance detail with accessibility.",
+                    'markers': [
+                        "Provide context for key points",
+                        "Include relevant examples",
+                        "Explain common considerations"
+                    ],
+                    'example': "Pain management involves both preventive measures and acute treatment. Common preventive strategies include staying hydrated and avoiding extreme temperatures."
+                },
+                'comprehensive': {
+                    'description': "Deliver thorough explanations with scientific depth.",
+                    'markers': [
+                        "Include detailed medical explanations",
+                        "Discuss multiple aspects of each point",
+                        "Provide extensive context and implications"
+                    ],
+                    'example': "Pain management in sickle cell disease involves a multi-faceted approach, including both pharmacological and non-pharmacological interventions. The pharmacological approach typically begins with..."
+                }
+            },
+            'empathy': {
+                'low': {
+                    'description': "Focus on clinical information with minimal emotional language.",
+                    'markers': [
+                        "Emphasize data and outcomes",
+                        "Use objective language",
+                        "Minimize emotional reassurance"
+                    ],
+                    'example': "Research indicates that regular hydration reduces the frequency of pain crises by approximately 40%."
+                },
+                'moderate': {
+                    'description': "Balance emotional support with practical guidance.",
+                    'markers': [
+                        "Acknowledge concerns briefly",
+                        "Include occasional reassurance",
+                        "Focus primarily on actionable information"
+                    ],
+                    'example': "While these symptoms can be concerning, there are several effective management strategies available. Let's focus on the practical steps you can take."
+                },
+                'high': {
+                    'description': "Prioritize emotional support and reassurance.",
+                    'markers': [
+                        "Lead with emotional validation",
+                        "Include frequent reassurance",
+                        "Acknowledge and normalize feelings"
+                    ],
+                    'example': "I understand how overwhelming and scary these symptoms must be for you and your child. It's completely normal to feel worried, and I want you to know that we're here to support you every step of the way."
+                }
+            },
+            'professionalStyle': {
+                'laypersonFriendly': {
+                    'description': "Use simple terms and everyday analogies.",
+                    'markers': [
+                        "Avoid medical jargon",
+                        "Use everyday analogies",
+                        "Explain concepts using familiar references"
+                    ],
+                    'example': "Think of blood cells like tiny boats carrying oxygen through rivers in your body. In sickle cell disease, these boats become shaped more like crescents."
+                },
+                'clinicallyBalanced': {
+                    'description': "Blend medical terminology with accessible explanations.",
+                    'markers': [
+                        "Use medical terms with immediate explanations",
+                        "Balance technical accuracy with clarity",
+                        "Include both scientific and lay terminology"
+                    ],
+                    'example': "Vaso-occlusive crises - episodes where blood vessels become blocked by sickle-shaped cells - can cause severe pain."
+                },
+                'technical': {
+                    'description': "Use advanced medical terminology and concepts.",
+                    'markers': [
+                        "Employ specialized medical vocabulary",
+                        "Include detailed physiological explanations",
+                        "Reference specific medical processes"
+                    ],
+                    'example': "The pathophysiology involves polymerization of deoxygenated hemoglobin S, leading to erythrocyte sickling and subsequent vaso-occlusion."
+                }
+            }
+        }
+
+    def process_search_results(self, results: List[Dict], query: str, parameters: dict = None) -> Dict[str, Any]:
+        """Process search results with enhanced styling and OpenAI analysis."""
         text_content = []
         sources = set()
         
-        # Default parameters if none provided
+        # Default parameters with slightly higher temperature for style variation
         parameters = parameters or {
             'tone': 'balanced',
             'detailLevel': 'moderate',
@@ -288,6 +411,9 @@ class ElasticsearchQuerier:
             'professionalStyle': 'clinicallyBalanced'
         }
 
+        logger.info(f"Processing search with parameters: {parameters}")
+
+        # Process search results
         for result in results:
             text_snippet = {
                 'text': result['text_preview'],
@@ -301,48 +427,30 @@ class ElasticsearchQuerier:
             for snippet in text_content
         ])
 
-        # Get style-specific instructions based on dropdown selections
-        style_instructions = self._get_style_instructions(parameters)
-
-        prompt = f"""
-        Based on the provided medical information, answer the patient's question as follows:
-
-        Question: "{query}"
-
-        Relevant Information (with sources):
-        {formatted_text}
-
-        Important Rules for Your Response:
-        1. Act as a compassionate, kind and knowledgeable doctor with expertise in sickle cell disease.
-        2. For EVERY piece of information or recommendation you provide, you MUST cite the specific source 
-            immediately after that information in parentheses.
-        3. Format your citations like this: (Source: [article name], Page [number])
-        4. If multiple sources support a statement, cite all relevant sources.
-        5. Your response should be clear and directly related to the patient's question.
-        6. Only use information from the provided text - if information is not available, state that clearly.
-        7. Break your response into clear paragraphs, with each statement properly cited.
-        8. Avoid making any statements without a citation.
-
-        Additional Style Instructions:
-        {style_instructions}
-        """
+        # Get enhanced style instructions
+        style_instructions = self._generate_enhanced_style_instructions(parameters)
+        
+        # Create a more structured prompt
+        prompt = self._create_structured_prompt(query, formatted_text, style_instructions)
 
         try:
             response = self.openai_client.chat.completions.create(
                 model="gpt-4-turbo",
                 messages=[
                     {
-                        "role": "system", 
-                        "content": "You are an expert medical professional. Provide clear, compassionate advice with specific citations for EVERY piece of information."
+                        "role": "system",
+                        "content": f"You are an expert medical professional specializing in sickle cell disease. "
+                                 f"Maintain the following communication style consistently:\n\n{style_instructions}\n\n"
+                                 f"Every piece of information must be supported by specific citations from the provided sources."
                     },
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.0
+                temperature=0.3  # Allow for style variation while maintaining accuracy
             )
             analysis = response.choices[0].message.content
             
         except Exception as e:
-            logger.error(f"Error getting OpenAI analysis: {str(e)}")
+            logger.error(f"Error in OpenAI analysis: {str(e)}")
             analysis = "Error generating analysis. Please try again."
 
         return {
@@ -351,40 +459,62 @@ class ElasticsearchQuerier:
             'analysis': analysis,
             'metadata': {
                 'num_results': len(results),
-                'num_sources': len(sources)
+                'num_sources': len(sources),
+                'style_parameters': parameters
             }
         }
 
-    def _get_style_instructions(self, parameters: dict) -> str:
-        """Generate specific style instructions based on selected parameters."""
-        style_map = {
-            'tone': {
-                'friendly': "Use a warm, approachable tone. Write as if you're speaking kindly and patiently to a concerned parent.",
-                'balanced': "Adopt a neutral yet reassuring tone. Present the information calmly and clearly, without being overly formal.",
-                'formal': "Use a professional, structured tone. Maintain a polished style that reflects medical expertise."
-            },
-            'detailLevel': {
-                'brief': "Provide only the most essential points. Keep your answer concise, and avoid unnecessary details.",
-                'moderate': "Offer a reasonably detailed explanation, including key facts and common considerations. Avoid overwhelming the reader.",
-                'comprehensive': "Deliver an in-depth explanation that covers relevant medical details, context, and potential next steps."
-            },
-            'empathy': {
-                'low': "Convey primarily factual information with minimal emotional or sympathetic language.",
-                'moderate': "Show understanding of the parent's concern and include reassuring language, but keep the focus on practical guidance.",
-                'high': "Provide comforting words and strong emotional support. Acknowledge parental anxieties and reassure them with empathy."
-            },
-            'professionalStyle': {
-                'laypersonFriendly': "Explain concepts in simple terms, avoiding or clarifying technical jargon so any parent can easily follow.",
-                'clinicallyBalanced': "Use straightforward medical language but also define terms in parent-friendly ways. Blend clarity with credible detail.",
-                'technical': "Incorporate medical terminology and advanced concepts suitable for those with a background or strong interest in healthcare specifics."
-            }
+    def _generate_enhanced_style_instructions(self, parameters: dict) -> str:
+        """Generate detailed style instructions with examples."""
+        selected_styles = {
+            category: self.style_map[category][value]
+            for category, value in parameters.items()
         }
+        
+        instructions = []
+        
+        for category, style in selected_styles.items():
+            instructions.extend([
+                f"\n{category.upper()} STYLE GUIDELINES:",
+                f"Description: {style['description']}",
+                "Key Language Markers:",
+                *[f"- {marker}" for marker in style['markers']],
+                f"Example: {style['example']}"
+            ])
 
-        instructions = [
-            f"Tone: {style_map['tone'][parameters['tone']]}",
-            f"Detail Level: {style_map['detailLevel'][parameters['detailLevel']]}",
-            f"Empathy Level: {style_map['empathy'][parameters['empathy']]}",
-            f"Professional Style: {style_map['professionalStyle'][parameters['professionalStyle']]}"
-        ]
-
+        # Add style combination guidance
+        tone_level = parameters['tone']
+        empathy_level = parameters['empathy']
+        detail_level = parameters['detailLevel']
+        
+        instructions.append("\nSTYLE INTEGRATION GUIDELINES:")
+        instructions.append(f"- Combine {tone_level} tone with {empathy_level} empathy level")
+        instructions.append(f"- Maintain {detail_level} detail level throughout")
+        instructions.append("- Ensure all medical information is accurately cited")
+        
         return "\n".join(instructions)
+
+    def _create_structured_prompt(self, query: str, formatted_text: str, style_instructions: str) -> str:
+        """Create a structured prompt with clear sections."""
+        return f"""
+PATIENT QUESTION:
+"{query}"
+
+COMMUNICATION STYLE REQUIREMENTS:
+{style_instructions}
+
+RELEVANT MEDICAL INFORMATION:
+{formatted_text}
+
+RESPONSE REQUIREMENTS:
+1. Maintain the specified communication style consistently throughout your response.
+2. Cite EVERY piece of medical information using the format: (Source: [article name], Page [number])
+3. If multiple sources support a statement, cite all relevant sources.
+4. Break your response into clear paragraphs for readability.
+5. Only use information from the provided sources - clearly state if information is not available.
+6. Begin with appropriate emotional acknowledgment based on the specified empathy level.
+7. Structure your response with clear progression from acknowledgment to explanation to recommendations.
+8. End with appropriate closing based on the specified tone and empathy level.
+
+Please provide your response following these guidelines while maintaining medical accuracy and appropriate citations.
+"""

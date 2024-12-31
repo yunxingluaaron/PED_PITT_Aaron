@@ -53,6 +53,9 @@ def submit_question():
             'professionalStyle': 'clinicallyBalanced'
         })
 
+
+        logger.info(f"in the chat api, the tuning parameters is {parameters}")
+
         user = User.query.get(user_id)
         if not user:
             logger.error(f"User not found for ID: {user_id}")
