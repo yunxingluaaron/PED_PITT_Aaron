@@ -22,6 +22,7 @@ const DashboardLayout = () => {
   const [sources, setSources] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedHistoryQuestion, setSelectedHistoryQuestion] = useState(null);
+  const [currentQuestionId, setCurrentQuestionId] = useState(null); // Add this state
   const [dimensions, setDimensions] = useState({
     questions: { width: 800, height: 200 },
     answers: { width: 800, height: 400 },
@@ -45,8 +46,8 @@ const DashboardLayout = () => {
     
     if (question.isFromHistory) {
       console.log('🔵 Processing historical question');
-      // Set states in correct order
       setCurrentAnswer({
+        id: question.id, // Include question ID
         conversation_id: question.conversation_id,
         detailed_response: question.response,
         sources: question.source_data || [],
@@ -56,6 +57,7 @@ const DashboardLayout = () => {
       setSources(question.source_data || []);
       setCurrentQuestion(question.content);
       setSelectedHistoryQuestion(question);
+      setCurrentQuestionId(question.id); // Set question ID
       setIsGenerating(false);
     }
   };
@@ -66,7 +68,6 @@ const DashboardLayout = () => {
       isHistorical: selectedHistoryQuestion?.isFromHistory
     });
   
-    // If it's not a new question (i.e., same as history), don't proceed
     if (selectedHistoryQuestion?.isFromHistory && 
         question === selectedHistoryQuestion.content) {
       console.log('🔵 Skipping submission for historical question');
@@ -78,6 +79,7 @@ const DashboardLayout = () => {
       setCurrentQuestion(question);
       setSelectedHistoryQuestion(null);
       setCurrentAnswer(null);
+      setCurrentQuestionId(null); // Reset question ID for new questions
     } catch (error) {
       console.error('Error submitting question:', error);
       setIsGenerating(false);
@@ -85,12 +87,14 @@ const DashboardLayout = () => {
   };
 
   const handleAnswerGenerated = (answer) => {
-    // Only handle answer generation for new questions
     if (!answer.isHistoricalAnswer) {
       setCurrentAnswer(answer);
       setIsGenerating(false);
       if (answer && answer.sources) {
         setSources(answer.sources);
+      }
+      if (answer.id) {
+        setCurrentQuestionId(answer.id); // Set question ID from new answer
       }
       window.dispatchEvent(new Event('questionAdded'));
     }
@@ -151,6 +155,7 @@ const DashboardLayout = () => {
           >
             <AnswerSection 
               question={currentQuestion}
+              questionId={currentQuestionId} // Pass question ID
               onAnswerGenerated={handleAnswerGenerated}
               onSourcesUpdate={handleSourcesUpdate}
               onError={handleGenerationError}

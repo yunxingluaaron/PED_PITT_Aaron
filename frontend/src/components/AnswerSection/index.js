@@ -8,7 +8,7 @@ import useVersionHistory from './hooks/useVersionHistory';
 import useAnswerGeneration from './hooks/useAnswerGeneration';
 
 export const AnswerSection = ({ 
-  question, 
+  question,
   onAnswerGenerated, 
   onSourcesUpdate, 
   isGenerating,
@@ -22,6 +22,7 @@ export const AnswerSection = ({
     sources,
     relationships,
     metadata,
+    questionId, // Get questionId from useAnswerGeneration
     generateAnswerFromQuestion
   } = useAnswerGeneration();
 
@@ -33,7 +34,7 @@ export const AnswerSection = ({
     getCurrentVersion,
     toggleLike,
     toggleBookmark,
-  } = useVersionHistory('');
+  } = useVersionHistory(questionId || selectedHistoryQuestion?.id); //
 
   const [editorContent, setEditorContent] = useState('');
   const [originalContent, setOriginalContent] = useState('');
@@ -42,6 +43,7 @@ export const AnswerSection = ({
 
   // Get current version using the provided function
   const currentVersion = getCurrentVersion();
+
 
   // Handle answer updates from AI or history
   useEffect(() => {
@@ -65,7 +67,6 @@ export const AnswerSection = ({
     }
   }, [answer, currentAnswer, versions, addVersion, onSourcesUpdate]);
 
-  // Handle version selection
   useEffect(() => {
     const selectedVersion = getCurrentVersion();
     if (selectedVersion) {
@@ -85,7 +86,7 @@ export const AnswerSection = ({
       if (question && 
           typeof question === 'string' && 
           question !== processedQuestionRef.current &&
-          !currentAnswer?.isHistoricalAnswer) { // Skip if it's a historical answer
+          !currentAnswer?.isHistoricalAnswer) {
         
         console.log('🔄 Processing new question:', question);
         processedQuestionRef.current = question;
@@ -97,7 +98,8 @@ export const AnswerSection = ({
             conversation_id: selectedHistoryQuestion.conversation_id,
             response: selectedHistoryQuestion.response,
             source_data: selectedHistoryQuestion.source_data,
-            response_metadata: selectedHistoryQuestion.response_metadata
+            response_metadata: selectedHistoryQuestion.response_metadata,
+            question_id: selectedHistoryQuestion.id
           } : {};
 
           const response = await generateAnswerFromQuestion(question, options);
@@ -108,6 +110,7 @@ export const AnswerSection = ({
             
             if (onAnswerGenerated) {
               onAnswerGenerated({
+                id: response.question_id, // Include question ID
                 answer: response.detailed_response,
                 sources: response.sources || [],
                 relationships: response.relationships || [],
@@ -135,10 +138,21 @@ export const AnswerSection = ({
   }, []);
 
   const handleSave = useCallback(() => {
+    console.log('Saving version, content:', editorContent?.trim());
     if (editorContent && editorContent.trim()) {
-      addVersion(editorContent, 'user');
+      try {
+        const currentQuestionId = questionId || selectedHistoryQuestion?.id;
+        if (!currentQuestionId) {
+          console.warn('No question ID available for saving version');
+          return;
+        }
+        addVersion(editorContent, 'user');
+        console.log('Version saved successfully');
+      } catch (error) {
+        console.error('Failed to save version:', error);
+      }
     }
-  }, [editorContent, addVersion]);
+  }, [editorContent, addVersion, questionId, selectedHistoryQuestion]);
 
   const getPlainTextContent = useCallback((htmlContent) => {
     const tempDiv = document.createElement('div');

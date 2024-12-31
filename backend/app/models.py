@@ -91,22 +91,23 @@ class Question(db.Model):
     is_archived = db.Column(db.Boolean, default=False)
 
 class VersionHistory(db.Model):
-    __tablename__ = 'version_history'
+    __tablename__ = 'version_history'  # Add this line
     
     id = db.Column(db.Integer, primary_key=True)
-    question_id = db.Column(db.Integer, db.ForeignKey('questions.id'), nullable=False)
+    question_id = db.Column(db.Integer, db.ForeignKey('questions.id'), nullable=False)  # Changed to match the plural form
     content = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    type = db.Column(db.String(10))  # 'ai' or 'user'
+    type = db.Column(db.String(50), nullable=False)  # 'user' or 'ai'
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     is_liked = db.Column(db.Boolean, default=False)
     is_bookmarked = db.Column(db.Boolean, default=False)
 
     def to_dict(self):
         return {
             'id': self.id,
+            'question_id': self.question_id,
             'content': self.content,
-            'timestamp': self.timestamp.isoformat(),
             'type': self.type,
+            'timestamp': self.timestamp.isoformat(),
             'is_liked': self.is_liked,
-            'is_bookmarked': self.is_bookmarked
+            'is_bookmarked': self.is_bookmarked,
         }
