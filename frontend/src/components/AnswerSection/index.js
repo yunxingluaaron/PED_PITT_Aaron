@@ -1,4 +1,3 @@
-// src/components/AnswerSection/index.js
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Editor from './components/Editor';
 import ActionBar from './components/ActionBar';
@@ -22,7 +21,7 @@ export const AnswerSection = ({
     sources,
     relationships,
     metadata,
-    questionId, // Get questionId from useAnswerGeneration
+    questionId,
     generateAnswerFromQuestion
   } = useAnswerGeneration();
 
@@ -34,16 +33,42 @@ export const AnswerSection = ({
     getCurrentVersion,
     toggleLike,
     toggleBookmark,
-  } = useVersionHistory(questionId || selectedHistoryQuestion?.id); //
+  } = useVersionHistory(questionId || selectedHistoryQuestion?.id);
 
   const [editorContent, setEditorContent] = useState('');
   const [originalContent, setOriginalContent] = useState('');
   const [showComparison, setShowComparison] = useState(false);
   const processedQuestionRef = useRef('');
 
-  // Get current version using the provided function
   const currentVersion = getCurrentVersion();
 
+  // Handle new question submissions
+  useEffect(() => {
+    const handleNewQuestion = async (event) => {
+      const { question, parameters } = event.detail;
+      console.log('🔄 Received new question event:', event.detail);
+      
+      try {
+        const result = await generateAnswerFromQuestion(question, { parameters });
+        if (result) {
+          console.log('✅ Answer generated:', result);
+          if (onAnswerGenerated) {
+            onAnswerGenerated(result);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error generating answer:', error);
+      }
+    };
+  
+    const element = document.getElementById('answer-section');
+    if (element) {
+      element.addEventListener('newQuestion', handleNewQuestion);
+      return () => {
+        element.removeEventListener('newQuestion', handleNewQuestion);
+      };
+    }
+  }, [generateAnswerFromQuestion, onAnswerGenerated]);
 
   // Handle answer updates from AI or history
   useEffect(() => {
@@ -84,25 +109,25 @@ export const AnswerSection = ({
   useEffect(() => {
     const handleAnswer = async () => {
       if (question && 
-          typeof question === 'string' && 
-          question !== processedQuestionRef.current &&
+          typeof question === 'object' &&  // Change to handle object with parameters
+          question.question !== processedQuestionRef.current &&
           !currentAnswer?.isHistoricalAnswer) {
         
         console.log('🔄 Processing new question:', question);
-        processedQuestionRef.current = question;
+        processedQuestionRef.current = question.question;
         
         try {
-          // Pass historical data if available
           const options = selectedHistoryQuestion?.isFromHistory ? {
             isHistoricalAnswer: true,
             conversation_id: selectedHistoryQuestion.conversation_id,
             response: selectedHistoryQuestion.response,
             source_data: selectedHistoryQuestion.source_data,
             response_metadata: selectedHistoryQuestion.response_metadata,
-            question_id: selectedHistoryQuestion.id
-          } : {};
+            question_id: selectedHistoryQuestion.id,
+            parameters: question.parameters
+          } : { parameters: question.parameters };
 
-          const response = await generateAnswerFromQuestion(question, options);
+          const response = await generateAnswerFromQuestion(question.question, options);
           
           if (response && response.detailed_response) {
             setEditorContent(response.detailed_response);
@@ -110,12 +135,13 @@ export const AnswerSection = ({
             
             if (onAnswerGenerated) {
               onAnswerGenerated({
-                id: response.question_id, // Include question ID
+                id: response.question_id,
                 answer: response.detailed_response,
                 sources: response.sources || [],
                 relationships: response.relationships || [],
                 metadata: response.metadata || {},
-                isHistoricalAnswer: options.isHistoricalAnswer
+                isHistoricalAnswer: options.isHistoricalAnswer,
+                parameters: question.parameters
               });
             }
           }
@@ -165,7 +191,7 @@ export const AnswerSection = ({
   }
 
   return (
-    <div className="h-full flex">
+    <div id="answer-section" className="h-full flex">
       <div className="flex-1 flex flex-col">
         <div className="flex-1 p-4 overflow-hidden flex flex-col">
           <h2 className="text-xl font-bold mb-4">AI Generated Response</h2>

@@ -13,12 +13,13 @@ const QuestionSection = ({
   const [localLoading, setLocalLoading] = useState(false);
   const wasSetFromHistory = useRef(false);
   
-  const [dropdownValues, setDropdownValues] = useState({
-    menu1: '',
-    menu2: '',
-    menu3: '',
-    menu4: ''
-  });
+// Make sure your dropdownValues state matches these IDs
+const [dropdownValues, setDropdownValues] = useState({
+  tone: 'balanced',           // Default to balanced tone
+  detailLevel: 'moderate',    // Default to moderate detail
+  empathy: 'moderate',        // Default to moderate empathy
+  professionalStyle: 'clinicallyBalanced'  // Default to clinically balanced style
+});
 
   // Log component render
   console.log('🟡 QuestionSection rendered:', {
@@ -67,29 +68,18 @@ const QuestionSection = ({
   }, [isGenerating, localLoading]);
 
   const handleQuestionSubmit = async (value) => {
-    console.log('🟡 handleQuestionSubmit called:', {
-      value,
-      wasSetFromHistory: wasSetFromHistory.current,
-      isHistoricalQuestion: selectedHistoryQuestion?.isFromHistory
-    });
-
     if (!value.trim() || localLoading) {
-      console.log('🟡 Submission blocked: empty value or loading');
       return;
     }
-
-    // Skip if this is a historical question
-    if (wasSetFromHistory.current) {
-      console.log('🟡 Skipping submission for historical question');
-      return;
-    }
-
+  
     setLocalLoading(true);
     try {
-      console.log('🟡 Submitting question to parent');
-      await onQuestionSubmit(value);
+      await onQuestionSubmit({
+        question: value,
+        parameters: dropdownValues
+      });
     } catch (error) {
-      console.error('🟡 Error submitting question:', error);
+      console.error('Error submitting question:', error);
       setLocalLoading(false);
     }
   };
@@ -113,10 +103,42 @@ const QuestionSection = ({
   };
 
   const dropdownMenus = [
-    { id: 'menu1', label: 'Dropdown menu 1', options: [/* your options */] },
-    { id: 'menu2', label: 'Dropdown menu 2', options: [/* your options */] },
-    { id: 'menu3', label: 'Dropdown menu 3', options: [/* your options */] },
-    { id: 'menu4', label: 'Dropdown menu 4', options: [/* your options */] }
+    {
+      id: 'tone',
+      label: 'Tone',
+      options: [
+        { value: 'friendly', label: 'Friendly' },
+        { value: 'balanced', label: 'Balanced' },
+        { value: 'formal', label: 'Formal' }
+      ]
+    },
+    {
+      id: 'detailLevel',
+      label: 'Level of Detail',
+      options: [
+        { value: 'brief', label: 'Brief' },
+        { value: 'moderate', label: 'Moderate' },
+        { value: 'comprehensive', label: 'Comprehensive' }
+      ]
+    },
+    {
+      id: 'empathy',
+      label: 'Empathy',
+      options: [
+        { value: 'low', label: 'Low' },
+        { value: 'moderate', label: 'Moderate' },
+        { value: 'high', label: 'High' }
+      ]
+    },
+    {
+      id: 'professionalStyle',
+      label: 'Professional Style',
+      options: [
+        { value: 'laypersonFriendly', label: 'Layperson-Friendly' },
+        { value: 'clinicallyBalanced', label: 'Clinically Balanced' },
+        { value: 'technical', label: 'Technical' }
+      ]
+    }
   ];
 
   return (

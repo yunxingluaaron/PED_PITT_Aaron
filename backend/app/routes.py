@@ -31,7 +31,6 @@ api = Blueprint('api', __name__)
 # Initialize ElasticsearchQuerier
 es_querier = ElasticsearchQuerier()
 
-# Updated submit_question route
 @api.route('/chat', methods=['POST'])
 @jwt_required()
 def submit_question():
@@ -45,6 +44,14 @@ def submit_question():
         if not data or 'message' not in data:
             logger.warning("Missing message in request")
             return jsonify({'error': 'Message is required'}), 400
+
+        # Extract parameters from request
+        parameters = data.get('parameters', {
+            'tone': 'balanced',
+            'detailLevel': 'moderate',
+            'empathy': 'moderate',
+            'professionalStyle': 'clinicallyBalanced'
+        })
 
         user = User.query.get(user_id)
         if not user:
@@ -82,12 +89,13 @@ def submit_question():
             db.session.add(new_question)
             db.session.flush()
 
-            # Generate answer
+            # Generate answer with parameters
             try:
                 hybrid_results = es_querier.hybrid_search(message)
                 analysis_results = es_querier.process_search_results(
                     results=hybrid_results,
-                    query=message
+                    query=message,
+                    parameters=parameters  # Pass parameters here
                 )
             except Exception as e:
                 logger.error(f"Search/Analysis error: {str(e)}", exc_info=True)
@@ -127,14 +135,13 @@ def submit_question():
             # Prepare response
             response_data = {
                 'conversation_id': conversation_id,
-                'question_id': new_question.id,  # Make sure this is included
+                'question_id': new_question.id,
                 'detailed_response': analysis_results['analysis'],
                 'sources': analysis_results['sources'],
                 'metadata': analysis_results['metadata'],
                 'relationships': [rel for result in hybrid_results 
                                 for rel in result.get('relationships', [])],
                 'text_content': analysis_results['text_content'],
-                # Add these fields for proper version tracking
                 'ai_version_id': ai_version.id,
                 'user_version_id': user_version.id
             }
@@ -150,7 +157,6 @@ def submit_question():
         logger.error(f"Chat endpoint error: {str(e)}", exc_info=True)
         db.session.rollback()
         return jsonify({'error': 'Internal server error'}), 500
-    
 
 
 @api.route('/conversations/<conversation_id>', methods=['GET'])

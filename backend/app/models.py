@@ -90,6 +90,7 @@ class Question(db.Model):
     versions = db.relationship('VersionHistory', backref='question', lazy=True)
     is_archived = db.Column(db.Boolean, default=False)
 
+
 class VersionHistory(db.Model):
     __tablename__ = 'version_history'  # Add this line
     

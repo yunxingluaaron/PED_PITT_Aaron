@@ -1,23 +1,31 @@
-// src/services/questionApi.js
-
 import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
 
-// In questionApi.js
-
-// questionApi.js
-export const generateAnswer = async ({ message, options = {}, conversation_id = null }) => {
-  console.log('🚀 generateAnswer called with:', { message, options, conversation_id });
+export const generateAnswer = async ({ 
+  message, 
+  options = {}, 
+  conversation_id = null, 
+  parameters = null 
+}) => {
+  console.log('🚀 generateAnswer called with:', { 
+    message, 
+    options, 
+    conversation_id,
+    parameters 
+  });
   
-  // Add check for historical questions
+  // Handle historical questions
   if (options.isHistoricalAnswer) {
     console.log('📜 Using historical answer, skipping API call');
     return {
       conversation_id: options.conversation_id,
       detailed_response: options.response,
       sources: options.source_data || [],
-      metadata: options.response_metadata || {},
+      metadata: {
+        ...options.response_metadata,
+        parameters: parameters || options.parameters
+      },
       isHistoricalAnswer: true
     };
   }
@@ -30,12 +38,18 @@ export const generateAnswer = async ({ message, options = {}, conversation_id = 
   try {
     const requestData = {
       message: typeof message === 'string' ? message : message.message,
-      options,
       conversation_id,
+      parameters: parameters || {
+        tone: 'balanced',
+        detailLevel: 'moderate',
+        empathy: 'moderate',
+        professionalStyle: 'clinicallyBalanced'
+      },
       response_type: 'text'
     };
 
-    console.log('📤 Sending request to generate new answer');
+    console.log('📤 Request data being sent:', JSON.stringify(requestData, null, 2));
+    
     const response = await axios.post(`${API_BASE_URL}/chat`, requestData, {
       headers: {
         'Content-Type': 'application/json',
@@ -44,20 +58,38 @@ export const generateAnswer = async ({ message, options = {}, conversation_id = 
       withCredentials: true
     });
 
+    console.log('📥 Response received:', response.data);
+
     if (response.data) {
-      // Only dispatch questionAdded event for new questions
       if (!options.isHistoricalAnswer) {
-        window.dispatchEvent(new Event('questionAdded'));
+        window.dispatchEvent(new CustomEvent('questionAdded', {
+          detail: {
+            parameters: parameters
+          }
+        }));
       }
-      return response.data;
+      return {
+        ...response.data,
+        parameters: parameters
+      };
     }
   } catch (error) {
-    console.error('API Error:', error.response || error);
+    console.error('🔥 Detailed API Error:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      details: error.response?.data?.error || error.response?.data?.message
+    });
+    
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token');
       throw new Error('Session expired. Please login again.');
     }
-    throw new Error(error.response?.data?.message || 'Failed to generate answer');
+    
+    const errorMessage = error.response?.data?.error || 
+                        error.response?.data?.message || 
+                        'Failed to generate answer';
+    throw new Error(errorMessage);
   }
 };
 
@@ -94,8 +126,6 @@ export const getConversationHistory = async (conversation_id) => {
   }
 };
 
-
-
 export const getVersionHistory = async (questionId) => {
   const token = localStorage.getItem('auth_token');
   try {
@@ -126,8 +156,6 @@ export const deleteQuestion = async (questionId) => {
   }
 };
 
-
-// questionApi.jsgenerateAnswer
 export const getQuestionDetails = async (questionId) => {
   console.log('🔍 Fetching details for question:', questionId);
   const token = localStorage.getItem('auth_token');

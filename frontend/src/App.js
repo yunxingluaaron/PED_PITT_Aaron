@@ -62,24 +62,32 @@ const DashboardLayout = () => {
     }
   };
   
-  const handleQuestionSubmit = async (question) => {
+  const handleQuestionSubmit = async (questionData) => {
     console.log('🔵 handleQuestionSubmit called:', {
-      question,
+      questionData,
       isHistorical: selectedHistoryQuestion?.isFromHistory
     });
   
     if (selectedHistoryQuestion?.isFromHistory && 
-        question === selectedHistoryQuestion.content) {
+        questionData.question === selectedHistoryQuestion.content) {
       console.log('🔵 Skipping submission for historical question');
       return;
     }
   
     try {
       setIsGenerating(true);
-      setCurrentQuestion(question);
+      setCurrentQuestion(questionData.question);
       setSelectedHistoryQuestion(null);
       setCurrentAnswer(null);
-      setCurrentQuestionId(null); // Reset question ID for new questions
+      setCurrentQuestionId(null);
+  
+      // Pass the question to AnswerSection
+      const answerSection = document.getElementById('answer-section');
+      if (answerSection) {
+        answerSection.dispatchEvent(new CustomEvent('newQuestion', {
+          detail: questionData
+        }));
+      }
     } catch (error) {
       console.error('Error submitting question:', error);
       setIsGenerating(false);
@@ -128,43 +136,43 @@ const DashboardLayout = () => {
       />
       
       <div className="flex-1 flex">
-        <div className="flex-1 p-4 flex flex-col gap-4">
-          <ResizablePanel
-            width={dimensions.questions.width}
-            height={dimensions.questions.height}
-            onResize={handleResize('questions')}
-            minConstraints={[400, 100]}
-            maxConstraints={[1200, 400]}
-            resizeHandles={['s']}
-          >
-            <QuestionSection 
-              onQuestionSubmit={handleQuestionSubmit}
-              isGenerating={isGenerating}
-              initialQuestion={selectedHistoryQuestion?.content}
-              selectedHistoryQuestion={selectedHistoryQuestion}  // Pass the full history object
-            />
-          </ResizablePanel>
+      <div className="flex-1 p-4 flex flex-col gap-4">
+        <ResizablePanel
+          width={dimensions.questions.width}
+          height={dimensions.questions.height}
+          onResize={handleResize('questions')}
+          minConstraints={[400, 100]}
+          maxConstraints={[1200, 400]}
+          resizeHandles={['s']}
+        >
+          <QuestionSection 
+            onQuestionSubmit={handleQuestionSubmit}
+            isGenerating={isGenerating}
+            initialQuestion={selectedHistoryQuestion?.content}
+            selectedHistoryQuestion={selectedHistoryQuestion}
+          />
+        </ResizablePanel>
 
-          <ResizablePanel
-            width={dimensions.answers.width}
-            height={dimensions.answers.height}
-            onResize={handleResize('answers')}
-            minConstraints={[400, 200]}
-            maxConstraints={[1200, 800]}
-            resizeHandles={['s']}
-          >
-            <AnswerSection 
-              question={currentQuestion}
-              questionId={currentQuestionId} // Pass question ID
-              onAnswerGenerated={handleAnswerGenerated}
-              onSourcesUpdate={handleSourcesUpdate}
-              onError={handleGenerationError}
-              isGenerating={isGenerating}
-              selectedHistoryQuestion={selectedHistoryQuestion}
-              currentAnswer={currentAnswer}
-            />
-          </ResizablePanel>
-        </div>
+        <ResizablePanel
+          width={dimensions.answers.width}
+          height={dimensions.answers.height}
+          onResize={handleResize('answers')}
+          minConstraints={[400, 200]}
+          maxConstraints={[1200, 800]}
+          resizeHandles={['s']}
+        >
+          <AnswerSection 
+            question={currentQuestion}
+            questionId={currentQuestionId}
+            onAnswerGenerated={handleAnswerGenerated}
+            onSourcesUpdate={handleSourcesUpdate}
+            onError={handleGenerationError}
+            isGenerating={isGenerating}
+            selectedHistoryQuestion={selectedHistoryQuestion}
+            currentAnswer={currentAnswer}
+          />
+        </ResizablePanel>
+      </div>
 
         <ResizablePanel
           width={dimensions.reference.width}

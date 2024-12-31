@@ -275,10 +275,18 @@ class ElasticsearchQuerier:
             logger.error(f"Error in hybrid search: {str(e)}")
             raise
 
-    def process_search_results(self, results: list, query: str) -> Dict[str, Any]:
+    def process_search_results(self, results: list, query: str, parameters: dict = None) -> Dict[str, Any]:
         """Process search results and get OpenAI analysis with specific citations."""
         text_content = []
         sources = set()
+        
+        # Default parameters if none provided
+        parameters = parameters or {
+            'tone': 'balanced',
+            'detailLevel': 'moderate',
+            'empathy': 'moderate',
+            'professionalStyle': 'clinicallyBalanced'
+        }
 
         for result in results:
             text_snippet = {
@@ -293,6 +301,9 @@ class ElasticsearchQuerier:
             for snippet in text_content
         ])
 
+        # Get style-specific instructions based on dropdown selections
+        style_instructions = self._get_style_instructions(parameters)
+
         prompt = f"""
         Based on the provided medical information, answer the patient's question as follows:
 
@@ -304,20 +315,26 @@ class ElasticsearchQuerier:
         Important Rules for Your Response:
         1. Act as a compassionate, kind and knowledgeable doctor with expertise in sickle cell disease.
         2. For EVERY piece of information or recommendation you provide, you MUST cite the specific source 
-           immediately after that information in parentheses.
+            immediately after that information in parentheses.
         3. Format your citations like this: (Source: [article name], Page [number])
         4. If multiple sources support a statement, cite all relevant sources.
         5. Your response should be clear and directly related to the patient's question.
         6. Only use information from the provided text - if information is not available, state that clearly.
         7. Break your response into clear paragraphs, with each statement properly cited.
         8. Avoid making any statements without a citation.
+
+        Additional Style Instructions:
+        {style_instructions}
         """
 
         try:
             response = self.openai_client.chat.completions.create(
                 model="gpt-4-turbo",
                 messages=[
-                    {"role": "system", "content": "You are an expert medical professional. Provide clear, compassionate advice with specific citations for EVERY piece of information."},
+                    {
+                        "role": "system", 
+                        "content": "You are an expert medical professional. Provide clear, compassionate advice with specific citations for EVERY piece of information."
+                    },
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.0
@@ -337,3 +354,37 @@ class ElasticsearchQuerier:
                 'num_sources': len(sources)
             }
         }
+
+    def _get_style_instructions(self, parameters: dict) -> str:
+        """Generate specific style instructions based on selected parameters."""
+        style_map = {
+            'tone': {
+                'friendly': "Use a warm, approachable tone. Write as if you're speaking kindly and patiently to a concerned parent.",
+                'balanced': "Adopt a neutral yet reassuring tone. Present the information calmly and clearly, without being overly formal.",
+                'formal': "Use a professional, structured tone. Maintain a polished style that reflects medical expertise."
+            },
+            'detailLevel': {
+                'brief': "Provide only the most essential points. Keep your answer concise, and avoid unnecessary details.",
+                'moderate': "Offer a reasonably detailed explanation, including key facts and common considerations. Avoid overwhelming the reader.",
+                'comprehensive': "Deliver an in-depth explanation that covers relevant medical details, context, and potential next steps."
+            },
+            'empathy': {
+                'low': "Convey primarily factual information with minimal emotional or sympathetic language.",
+                'moderate': "Show understanding of the parent's concern and include reassuring language, but keep the focus on practical guidance.",
+                'high': "Provide comforting words and strong emotional support. Acknowledge parental anxieties and reassure them with empathy."
+            },
+            'professionalStyle': {
+                'laypersonFriendly': "Explain concepts in simple terms, avoiding or clarifying technical jargon so any parent can easily follow.",
+                'clinicallyBalanced': "Use straightforward medical language but also define terms in parent-friendly ways. Blend clarity with credible detail.",
+                'technical': "Incorporate medical terminology and advanced concepts suitable for those with a background or strong interest in healthcare specifics."
+            }
+        }
+
+        instructions = [
+            f"Tone: {style_map['tone'][parameters['tone']]}",
+            f"Detail Level: {style_map['detailLevel'][parameters['detailLevel']]}",
+            f"Empathy Level: {style_map['empathy'][parameters['empathy']]}",
+            f"Professional Style: {style_map['professionalStyle'][parameters['professionalStyle']]}"
+        ]
+
+        return "\n".join(instructions)

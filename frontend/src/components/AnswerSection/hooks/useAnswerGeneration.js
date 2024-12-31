@@ -1,4 +1,3 @@
-// frontend/src/components/AnswerSection/hooks/useAnswerGeneration.js
 import { useState, useCallback } from 'react';
 import { generateAnswer } from '../../../services/questionApi';
 
@@ -15,42 +14,63 @@ export const useAnswerGeneration = () => {
   const generateAnswerFromQuestion = useCallback(async (question, options = {}) => {
     setLoading(true);
     setError(null);
-    
-    console.log('Generating answer for question:', question);
-    console.log('With options:', options);
+
+    console.log('📝 Generating answer for question:', question);
+    console.log('🔧 With options:', options);
 
     try {
-      const response = await generateAnswer({
+      // Construct request data
+      const requestData = {
         message: question,
         conversation_id: options.conversation_id || conversationId,
-        historical_data: options.isHistoricalAnswer ? {
+        options: {
+          isHistoricalAnswer: options.isHistoricalAnswer || false,
+          conversation_id: options.conversation_id,
           response: options.response,
           source_data: options.source_data,
           response_metadata: options.response_metadata
-        } : null
-      });
+        },
+        parameters: options.parameters || {
+          tone: 'balanced',
+          detailLevel: 'moderate',
+          empathy: 'moderate',
+          professionalStyle: 'clinicallyBalanced'
+        }
+      };
 
-      console.log('Answer generation response:', response);
+      console.log('📤 Sending request with data:', requestData);
+      
+      const response = await generateAnswer(requestData);
+
+      console.log('📥 Received response:', response);
 
       // Update states with response data
       setAnswer(response.detailed_response);
       setSources(response.sources || []);
       setRelationships(response.relationships || []);
       setConversationId(response.conversation_id);
-      setMetadata(response.metadata);
-      setQuestionId(response.question_id); // Store the question ID
+      setMetadata({
+        ...response.metadata,
+        parameters: options.parameters
+      });
+      setQuestionId(response.question_id);
 
-      // If it's a historical answer, don't modify the states
+      // Only dispatch event for new questions
       if (!options.isHistoricalAnswer) {
-        window.dispatchEvent(new Event('questionAnswered'));
+        window.dispatchEvent(new CustomEvent('questionAnswered', {
+          detail: {
+            parameters: options.parameters
+          }
+        }));
       }
 
       return {
         ...response,
-        isHistoricalAnswer: options.isHistoricalAnswer
+        isHistoricalAnswer: options.isHistoricalAnswer,
+        parameters: options.parameters
       };
     } catch (err) {
-      console.error('Error generating answer:', err);
+      console.error('❌ Error generating answer:', err);
       setError(err.message || 'Failed to generate answer');
       throw err;
     } finally {
