@@ -142,29 +142,43 @@ const [dropdownValues, setDropdownValues] = useState({
   ];
 
   return (
-    <div className={`p-4 transition-opacity duration-200 ${
-      localLoading || isGenerating ? 'opacity-50' : 'opacity-100'
-    }`}>
-      <h2 className="text-xl font-bold mb-4">Questions Enter</h2>
-      <QuestionInput
-        value={question}
-        onChange={(newValue) => setQuestion(newValue)}
-        onSubmit={handleQuestionSubmit}
-        loading={localLoading || isGenerating}
-        onClear={handleClear}
-        isHistoricalQuestion={selectedHistoryQuestion?.isFromHistory}
-      />
-      <div className="mt-4 flex gap-2">
-        {dropdownMenus.map(menu => (
-          <DropdownMenu
-            key={menu.id}
-            label={menu.label}
-            options={menu.options}
-            value={dropdownValues[menu.id]}
-            onChange={handleDropdownChange(menu.id)}
-            disabled={localLoading || isGenerating}
-          />
-        ))}
+    <div className="bg-white rounded-lg shadow-sm">
+      <div className={`p-4 transition-all duration-200 ${
+        localLoading || isGenerating ? 'opacity-50' : 'opacity-100'
+      }`}>
+        <h2 className="text-xl font-bold mb-4">Questions Enter</h2>
+        
+        <QuestionInput
+          value={question}
+          onChange={(newValue) => setQuestion(newValue)}
+          onSubmit={handleQuestionSubmit}
+          loading={localLoading || isGenerating}
+          onClear={handleClear}
+          isHistoricalQuestion={selectedHistoryQuestion?.isFromHistory}
+        />
+
+        <div className="mt-6">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">
+            Customize Response Style
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {dropdownMenus.map(menu => (
+              <DropdownMenu
+                key={menu.id}
+                label={menu.label}
+                options={menu.options}
+                value={dropdownValues[menu.id]}
+                onChange={handleDropdownChange(menu.id)}
+                disabled={localLoading || isGenerating}
+              />
+            ))}
+          </div>
+          
+          {/* Optional: Help text */}
+          <p className="mt-2 text-sm text-gray-500">
+            Adjust these options to customize how the response is written and formatted.
+          </p>
+        </div>
       </div>
     </div>
   );
