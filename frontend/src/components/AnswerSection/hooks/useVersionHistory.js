@@ -121,7 +121,61 @@ const useVersionHistory = (questionId, initialContent = '') => {
     }
   }, [questionId]);
 
-  // Rest of the code remains the same...
+  const toggleLike = useCallback(async (versionId) => {
+    if (!questionId || !versionId) return;
+
+    try {
+      const version = versions.find(v => v.id === versionId);
+      if (!version) return;
+
+      const response = await axios.put(
+        `${API_BASE_URL}/questions/${questionId}/versions/${versionId}`,
+        { is_liked: !version.is_liked },
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          }
+        }
+      );
+
+      const updatedVersion = response.data;
+      setVersions(prev =>
+        prev.map(v => v.id === versionId ? updatedVersion : v)
+      );
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+    }
+  }, [questionId, versions]);
+
+  const toggleBookmark = useCallback(async (versionId) => {
+    if (!questionId || !versionId) return;
+
+    try {
+      const version = versions.find(v => v.id === versionId);
+      if (!version) return;
+
+      const response = await axios.put(
+        `${API_BASE_URL}/questions/${questionId}/versions/${versionId}`,
+        { is_bookmarked: !version.is_bookmarked },
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          }
+        }
+      );
+
+      const updatedVersion = response.data;
+      setVersions(prev =>
+        prev.map(v => v.id === versionId ? updatedVersion : v)
+      );
+    } catch (error) {
+      console.error('Failed to toggle bookmark:', error);
+    }
+  }, [questionId, versions]);
+
+  const getCurrentVersion = useCallback(() => {
+    return versions.find(v => v.id === currentVersionId) || versions[0] || null;
+  }, [versions, currentVersionId]);
 
   return {
     versions,
