@@ -41,6 +41,7 @@ export const AnswerSection = ({
   const processedQuestionRef = useRef('');
 
   const currentVersion = getCurrentVersion();
+  const initialLoadDone = useRef(false);
 
   // Handle new question submissions
   useEffect(() => {
@@ -70,15 +71,20 @@ export const AnswerSection = ({
     }
   }, [generateAnswerFromQuestion, onAnswerGenerated]);
 
-  // Handle answer updates from AI or history
   useEffect(() => {
     if (currentAnswer?.isHistoricalAnswer) {
       console.log('📜 Setting content from historical answer');
       setEditorContent(currentAnswer.detailed_response);
       setOriginalContent(currentAnswer.detailed_response);
-      if (!versions.some(v => v.content === currentAnswer.detailed_response)) {
+      
+      // Only add version if this is NOT the initial load of a historical answer
+      if (!initialLoadDone.current && currentAnswer.isHistoricalAnswer) {
+        initialLoadDone.current = true;
+        // Don't add version on initial load
+      } else if (!currentAnswer.isHistoricalAnswer && !versions.some(v => v.content === currentAnswer.detailed_response)) {
         addVersion(currentAnswer.detailed_response, 'ai');
       }
+      
       if (onSourcesUpdate) {
         onSourcesUpdate(currentAnswer.sources || []);
       }
@@ -86,11 +92,11 @@ export const AnswerSection = ({
       console.log('🤖 Setting content from new AI answer');
       setEditorContent(answer);
       setOriginalContent(answer);
-      if (!versions.some(v => v.content === answer)) {
+      if (!versions.length) {
         addVersion(answer, 'ai');
       }
     }
-  }, [answer, currentAnswer, versions, addVersion, onSourcesUpdate]);
+  }, [answer, currentAnswer]);
 
   useEffect(() => {
     const selectedVersion = getCurrentVersion();
@@ -172,13 +178,18 @@ export const AnswerSection = ({
           console.warn('No question ID available for saving version');
           return;
         }
-        addVersion(editorContent, 'user');
-        console.log('Version saved successfully');
+        // Check if this exact content already exists in versions
+        if (!versions.some(v => v.content === editorContent.trim())) {
+          addVersion(editorContent, 'user');
+          console.log('Version saved successfully');
+        } else {
+          console.log('Version with this content already exists');
+        }
       } catch (error) {
         console.error('Failed to save version:', error);
       }
     }
-  }, [editorContent, addVersion, questionId, selectedHistoryQuestion]);
+  }, [editorContent, addVersion, questionId, selectedHistoryQuestion, versions]);
 
   const getPlainTextContent = useCallback((htmlContent) => {
     const tempDiv = document.createElement('div');

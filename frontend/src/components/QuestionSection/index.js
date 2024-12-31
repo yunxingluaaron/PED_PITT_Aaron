@@ -88,10 +88,15 @@ const [dropdownValues, setDropdownValues] = useState({
     console.log('🟡 Clearing question');
     setQuestion('');
     wasSetFromHistory.current = false;
-    // Don't trigger a submission on clear
+    // Instead of submitting empty string, just reset the history state
     if (selectedHistoryQuestion) {
       console.log('🟡 Resetting history state');
-      onQuestionSubmit('');
+      // Reset any history-related state without triggering submission
+      onQuestionSubmit({ 
+        question: '',
+        parameters: dropdownValues,
+        clearOnly: true // Add this flag
+      });
     }
   };
 

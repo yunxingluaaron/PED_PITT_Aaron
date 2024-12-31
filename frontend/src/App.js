@@ -68,6 +68,14 @@ const DashboardLayout = () => {
       isHistorical: selectedHistoryQuestion?.isFromHistory
     });
   
+    // Add check for clearOnly flag
+    if (questionData.clearOnly) {
+      setSelectedHistoryQuestion(null);
+      setCurrentAnswer(null);
+      setCurrentQuestionId(null);
+      return;
+    }
+  
     if (selectedHistoryQuestion?.isFromHistory && 
         questionData.question === selectedHistoryQuestion.content) {
       console.log('🔵 Skipping submission for historical question');
