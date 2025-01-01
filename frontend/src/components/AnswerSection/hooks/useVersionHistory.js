@@ -9,6 +9,7 @@ const useVersionHistory = (questionId, initialContent = '') => {
   const [currentVersionId, setCurrentVersionId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [lastAIVersion, setLastAIVersion] = useState(null);
 
   // Load versions when questionId changes
   useEffect(() => {
@@ -52,14 +53,18 @@ const useVersionHistory = (questionId, initialContent = '') => {
     loadVersions();
   }, [questionId]);
 
-  const addVersion = useCallback(async (content, type = 'user') => {
+  const addVersion = useCallback(async (content, type = 'user', metadata = {}) => {
     if (!content) return;
     setError(null);
-    console.log('Adding version for question:', questionId);
-
+    
     try {
+      // Prevent duplicate AI versions
+      if (type === 'ai' && lastAIVersion?.content === content) {
+        console.log('Preventing duplicate AI version');
+        return lastAIVersion;
+      }
+
       if (!questionId) {
-        console.warn('No questionId provided, creating local version');
         const newVersion = {
           id: Date.now(),
           content,
@@ -67,23 +72,23 @@ const useVersionHistory = (questionId, initialContent = '') => {
           timestamp: new Date().toISOString(),
           is_liked: false,
           is_bookmarked: false,
-          isLocal: true
+          isLocal: true,
+          ...metadata
         };
         setVersions(prev => [...prev, newVersion]);
         setCurrentVersionId(newVersion.id);
+        if (type === 'ai') setLastAIVersion(newVersion);
         return newVersion;
       }
 
-      // Simplify the version data structure
       const versionData = {
         content,
         type,
         timestamp: new Date().toISOString(),
         is_liked: false,
-        is_bookmarked: false
+        is_bookmarked: false,
+        ...metadata
       };
-
-      console.log('Sending version data:', versionData);
 
       const response = await axios.post(
         `${API_BASE_URL}/questions/${questionId}/versions`,
@@ -97,29 +102,27 @@ const useVersionHistory = (questionId, initialContent = '') => {
 
       if (response.data) {
         const newVersion = response.data;
-        console.log('Version saved successfully:', newVersion);
-
+        
         setVersions(prev => {
           const updated = [...prev, newVersion].sort((a, b) => 
             new Date(b.timestamp) - new Date(a.timestamp)
           );
           return updated;
         });
+        
         setCurrentVersionId(newVersion.id);
+        if (type === 'ai') setLastAIVersion(newVersion);
 
-        // Dispatch event to notify question history to refresh
         window.dispatchEvent(new Event('questionUpdated'));
-
         return newVersion;
       }
     } catch (error) {
       const errorMessage = error.response?.data?.error || 'Failed to save version';
       console.error('Failed to save version:', errorMessage);
       setError(errorMessage);
-      // Don't throw the error, handle it gracefully
       return null;
     }
-  }, [questionId]);
+  }, [questionId, lastAIVersion]);
 
   const toggleLike = useCallback(async (versionId) => {
     if (!questionId || !versionId) return;

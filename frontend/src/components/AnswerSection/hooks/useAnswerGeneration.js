@@ -19,7 +19,6 @@ export const useAnswerGeneration = () => {
     console.log('🔧 With options:', options);
 
     try {
-      // Construct request data
       const requestData = {
         message: question,
         conversation_id: options.conversation_id || conversationId,
@@ -37,29 +36,28 @@ export const useAnswerGeneration = () => {
           professionalStyle: 'clinicallyBalanced'
         }
       };
-
-      console.log('📤 Sending request with data:', requestData);
       
       const response = await generateAnswer(requestData);
 
-      console.log('📥 Received response:', response);
-
-      // Update states with response data
+      // Update states
       setAnswer(response.detailed_response);
       setSources(response.sources || []);
       setRelationships(response.relationships || []);
       setConversationId(response.conversation_id);
       setMetadata({
         ...response.metadata,
-        parameters: options.parameters
+        parameters: options.parameters,
+        question // Store original question
       });
       setQuestionId(response.question_id);
 
-      // Only dispatch event for new questions
+      // Only dispatch event for new questions with metadata
       if (!options.isHistoricalAnswer) {
         window.dispatchEvent(new CustomEvent('questionAnswered', {
           detail: {
-            parameters: options.parameters
+            parameters: options.parameters,
+            question,
+            response: response.detailed_response
           }
         }));
       }
@@ -67,7 +65,8 @@ export const useAnswerGeneration = () => {
       return {
         ...response,
         isHistoricalAnswer: options.isHistoricalAnswer,
-        parameters: options.parameters
+        parameters: options.parameters,
+        originalQuestion: question
       };
     } catch (err) {
       console.error('❌ Error generating answer:', err);

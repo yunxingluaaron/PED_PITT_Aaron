@@ -191,6 +191,16 @@ export const AnswerSection = ({
     }
   }, [editorContent, addVersion, questionId, selectedHistoryQuestion, versions]);
 
+    // In your AnswerSection component
+  const handleCopy = (content) => {
+    // Save a new version when copying
+    addVersion(content, 'copy', {
+      type: 'copy',
+      timestamp: new Date().toISOString()
+    });
+  };
+
+
   const getPlainTextContent = useCallback((htmlContent) => {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlContent;
@@ -233,6 +243,7 @@ export const AnswerSection = ({
           isBookmarked={currentVersion?.isBookmarked}
           textToCopy={getPlainTextContent(editorContent)}
           metadata={metadata}
+          onCopy={handleCopy}
         />
         {showComparison && (
           <VersionComparison
