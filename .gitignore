@@ -1,3 +1,6 @@
 .envbackend/.env
 backend/.env
 backend/pdfs/*
+*.mp4
+*.mp3
+*.pdf
