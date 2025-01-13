@@ -17,7 +17,7 @@ class ElasticsearchQuerier:
     def __init__(self,
                  es_host: str = 'localhost',
                  es_port: int = 9200,
-                 index_name: str = 'scd_literature'):
+                 index_name: str = 'ped_literature_3_files_01_01_2025'):
         """Initialize Elasticsearch connection and OpenAI client."""
         try:
             self.es = Elasticsearch(
