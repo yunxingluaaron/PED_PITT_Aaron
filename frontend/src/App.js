@@ -25,7 +25,7 @@ const DashboardLayout = () => {
   const [selectedHistoryQuestion, setSelectedHistoryQuestion] = useState(null);
   const [currentQuestionId, setCurrentQuestionId] = useState(null); // Add this state
   const [dimensions, setDimensions] = useState({
-    questions: { width: 1200, height: 200 },
+    questions: { width: 1200, height: 400 },
     answers: { width: 1200, height: 400 },
     reference: { width: 300, height: 600 }
   });
@@ -145,44 +145,52 @@ const DashboardLayout = () => {
       />
       
       <div className="flex-1 flex">
-      <div className="flex-1 p-4 flex flex-col gap-4">
-        <ResizablePanel
-          width={dimensions.questions.width}
-          height={dimensions.questions.height}
-          onResize={handleResize('questions')}
-          minConstraints={[400, 100]}
-          maxConstraints={[1200, 400]}
-          resizeHandles={['s']}
-        >
-          <QuestionSection 
-            onQuestionSubmit={handleQuestionSubmit}
-            isGenerating={isGenerating}
-            initialQuestion={selectedHistoryQuestion?.content}
-            selectedHistoryQuestion={selectedHistoryQuestion}
-          />
-        </ResizablePanel>
-
-        <ResizablePanel
-          width={dimensions.answers.width}
-          height={dimensions.answers.height}
-          onResize={handleResize('answers')}
-          minConstraints={[400, 200]}
-          maxConstraints={[1200, 800]}
-          resizeHandles={['s']}
-        >
-          <AnswerSection 
-            question={currentQuestion}
-            questionId={currentQuestionId}
-            onAnswerGenerated={handleAnswerGenerated}
-            onSourcesUpdate={handleSourcesUpdate}
-            onError={handleGenerationError}
-            isGenerating={isGenerating}
-            selectedHistoryQuestion={selectedHistoryQuestion}
-            currentAnswer={currentAnswer}
-          />
-        </ResizablePanel>
-      </div>
-
+        <div className="flex-1 p-4 flex flex-col relative"> {/* Added relative positioning */}
+          <div className="mb-6"> {/* Increased margin bottom */}
+            <ResizablePanel
+              width={dimensions.questions.width}
+              height={dimensions.questions.height}
+              onResize={handleResize('questions')}
+              minConstraints={[400, 150]} // Increased minimum height
+              maxConstraints={[1200, 400]}
+              resizeHandles={['s']}
+            >
+              <div className="p-4 h-full"> {/* Add padding and full height */}
+                <QuestionSection 
+                  onQuestionSubmit={handleQuestionSubmit}
+                  isGenerating={isGenerating}
+                  initialQuestion={selectedHistoryQuestion?.content}
+                  selectedHistoryQuestion={selectedHistoryQuestion}
+                />
+              </div>
+            </ResizablePanel>
+          </div>
+  
+          <div className="flex-1">
+            <ResizablePanel
+              width={dimensions.answers.width}
+              height={dimensions.answers.height}
+              onResize={handleResize('answers')}
+              minConstraints={[400, 200]}
+              maxConstraints={[1200, 800]}
+              resizeHandles={['s']}
+            >
+              <div className="p-4 h-full overflow-auto"> {/* Add padding and scrolling */}
+                <AnswerSection 
+                  question={currentQuestion}
+                  questionId={currentQuestionId}
+                  onAnswerGenerated={handleAnswerGenerated}
+                  onSourcesUpdate={handleSourcesUpdate}
+                  onError={handleGenerationError}
+                  isGenerating={isGenerating}
+                  selectedHistoryQuestion={selectedHistoryQuestion}
+                  currentAnswer={currentAnswer}
+                />
+              </div>
+            </ResizablePanel>
+          </div>
+        </div>
+  
         <ResizablePanel
           width={dimensions.reference.width}
           height={dimensions.reference.height}
@@ -192,7 +200,9 @@ const DashboardLayout = () => {
           resizeHandles={['w']}
           className="border-l border-gray-200 bg-white"
         >
-          <ReferenceSection sources={sources} />
+          <div className="p-4 h-full overflow-auto">
+            <ReferenceSection sources={sources} />
+          </div>
         </ResizablePanel>
       </div>
     </div>

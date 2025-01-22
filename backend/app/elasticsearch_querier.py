@@ -278,125 +278,230 @@ class ElasticsearchQuerier:
             raise
 
     def _initialize_style_templates(self):
-        """Initialize comprehensive style templates with distinct characteristics."""
+        """
+        Initialize comprehensive style templates with distinct characteristics.
+        These templates are designed for pediatricians addressing concerned parents
+        about their children's health situations.
+        """
+
         self.style_map = {
             'tone': {
                 'friendly': {
-                    'description': "Use casual, warm language with first-person pronouns and conversational phrases.",
+                    'description': (
+                        "Adopt a warm, reassuring style that fosters a personal connection with parents. "
+                        "Use welcoming language and inclusive pronouns (e.g., 'we' or 'together') to build trust. "
+                        "Aim to convey empathy and genuine concern for the child's well-being while explaining medical details."
+                    ),
                     'markers': [
-                        "Use 'I' and 'we' pronouns frequently",
-                        "Include conversational transitions like 'you see,' and 'let me explain'",
-                        "Break down complex terms immediately after using them"
+                        "Use a friendly, approachable tone and first-person pronouns such as 'I' or 'we'",
+                        "Include gentle phrases (e.g., 'you know,' 'let’s see') to put parents at ease",
+                        "Offer brief, relatable anecdotes or stories to illustrate points",
+                        "Rephrase technical terms or clarify them in plain language when first introduced",
+                        "Acknowledge the emotional concerns parents may have in a caring but non-patronizing way"
                     ],
-                    'example': "I want to help you understand what's happening with your child's condition. You see, when we talk about sickle cell disease..."
+                    'example': (
+                        "I understand it can be scary to see your child in pain, especially when it happens often. "
+                        "But remember, you’re not alone, and there are steps we can take together to make a difference. "
+                        "Let’s go through each symptom and talk about simple, effective ways to help your child feel more comfortable."
+                    )
                 },
                 'balanced': {
-                    'description': "Blend professional expertise with accessible explanations.",
+                    'description': (
+                        "Combine a professional, knowledgeable tone with an approachable manner. "
+                        "This style offers enough technical depth to reassure parents of your expertise, "
+                        "while remaining accessible and easy to follow. Aim for clarity and empathy without extensive informality."
+                    ),
                     'markers': [
-                        "Balance technical terms with plain language explanations",
-                        "Use measured, clear language",
-                        "Maintain professional distance while being approachable"
+                        "Maintain a measured, informed tone that balances professional and accessible language",
+                        "Introduce medical terms alongside concise, plain-language definitions",
+                        "Use calm, reassuring language to instill confidence without being overly casual",
+                        "Encourage questions and clarify complex areas without overwhelming detail",
+                        "Acknowledge that parents may feel worried while offering balanced reassurance"
                     ],
-                    'example': "Sickle cell disease affects the red blood cells. This means that the cells that carry oxygen through the body become shaped like crescents instead of their normal round shape."
+                    'example': (
+                        "Sickle cell disease can lead to changes in the shape of red blood cells, causing potential blockages "
+                        "in blood vessels. While it may sound concerning, there are evidence-based treatments and preventive measures "
+                        "that can greatly help manage your child's symptoms and overall health. Let’s explore these step by step."
+                    )
                 },
                 'formal': {
-                    'description': "Employ academic language and structured medical discourse.",
+                    'description': (
+                        "Present information in a structured, authoritative manner, using precise medical terminology "
+                        "and a more formal register. This style positions you as a subject-matter expert who communicates "
+                        "complex details systematically and objectively."
+                    ),
                     'markers': [
-                        "Use precise medical terminology",
-                        "Maintain third-person perspective",
-                        "Employ formal transition phrases and discourse markers"
+                        "Use advanced medical terms and formal phrasing",
+                        "Prefer a third-person perspective or passive constructions (e.g., 'it is recommended')",
+                        "Employ transitional phrases like 'furthermore,' 'in addition,' or 'moreover' to structure discourse",
+                        "Maintain a respectful distance and professional tone, focusing on clear, factual statements",
+                        "Clarify intricate concepts thoroughly, anticipating the need for explicit definitions"
                     ],
-                    'example': "Clinical manifestations of sickle cell disease include vaso-occlusive events characterized by acute pain episodes."
+                    'example': (
+                        "Clinical evaluation of sickle cell disease frequently reveals vaso-occlusive episodes, "
+                        "manifested by acute pain crises and potential organ damage. Moreover, prophylactic interventions, "
+                        "such as hydroxyurea therapy, may significantly reduce the frequency of these occurrences."
+                    )
                 }
             },
             'detailLevel': {
                 'brief': {
-                    'description': "Provide essential points only with minimal elaboration.",
+                    'description': "Provide concise answers that focus on essential information. Ideal for busy parents needing quick insights without depth.",
                     'markers': [
-                        "Focus on key takeaways",
-                        "Limit background information",
-                        "Use concise sentence structures"
+                        "Quick, essential overviews only",
+                        "Limit details to key actions or conclusions",
+                        "Avoid in-depth background",
+                        "Use direct, brief sentences",
+                        "Minimize technical terms"
                     ],
-                    'example': "The primary treatment goals are pain management and prevention of complications."
+                    'example': "To manage sickle cell disease, ensure regular medical check-ups, control pain, and keep hydrated. These measures help prevent complications and maintain health."
                 },
                 'moderate': {
-                    'description': "Balance detail with accessibility.",
+                    'description': "Balance conciseness with enough detail to give clarity. Explain recommendations clearly, providing some medical background to help parents understand their importance.",
                     'markers': [
-                        "Provide context for key points",
-                        "Include relevant examples",
-                        "Explain common considerations"
+                        "Brief explanations of important concepts",
+                        "Use examples to clarify crucial points",
+                        "Discuss treatment effectiveness briefly",
+                        "Outline actionable steps for home care",
+                        "Provide context to anticipate common questions"
                     ],
-                    'example': "Pain management involves both preventive measures and acute treatment. Common preventive strategies include staying hydrated and avoiding extreme temperatures."
+                    'example': "Sickle cell disease causes red blood cells to harden and form a crescent shape, blocking blood flow. Prevent crises by keeping hydrated, managing temperature, and adhering to medication plans."
                 },
                 'comprehensive': {
-                    'description': "Deliver thorough explanations with scientific depth.",
+                    'description': "Provide thorough explanations, including various aspects of the condition, treatment options, and long-term strategies. Suitable for parents seeking deep understanding.",
                     'markers': [
-                        "Include detailed medical explanations",
-                        "Discuss multiple aspects of each point",
-                        "Provide extensive context and implications"
+                        "In-depth discussion of disease mechanisms",
+                        "Cite studies and guidelines",
+                        "Compare different treatment strategies",
+                        "Discuss potential complications and prevention",
+                        "Suggest considering comprehensive care options"
                     ],
-                    'example': "Pain management in sickle cell disease involves a multi-faceted approach, including both pharmacological and non-pharmacological interventions. The pharmacological approach typically begins with..."
+                    'example': "Sickle cell disease stems from a mutation causing hemoglobin S, which under low oxygen, deforms red blood cells into a sickle shape. This can cause blockages and tissue damage. Management strategies include antibiotics, pain management, and regular monitoring to prevent severe complications."
                 }
             },
+
             'empathy': {
                 'low': {
-                    'description': "Focus on clinical information with minimal emotional language.",
+                    'description': (
+                        "Keep the focus strictly on objective information with minimal emotional language. "
+                        "This style may be appropriate for parents who prioritize data, research, and direct solutions "
+                        "over personal reassurance."
+                    ),
                     'markers': [
-                        "Emphasize data and outcomes",
-                        "Use objective language",
-                        "Minimize emotional reassurance"
+                        "Emphasize clinical outcomes, data, and treatment effectiveness",
+                        "Use impersonal or third-person constructions (e.g., 'the child may experience...')",
+                        "Avoid empathetic phrases or mentions of emotional impact",
+                        "Present facts in a detached, matter-of-fact way",
+                        "Limit reassurance to short statements of efficacy or results"
                     ],
-                    'example': "Research indicates that regular hydration reduces the frequency of pain crises by approximately 40%."
+                    'example': (
+                        "Current studies show that patients who consistently adhere to prophylactic penicillin have a lower incidence of infections. "
+                        "Pain management protocols further indicate reduced hospitalizations when early intervention is applied."
+                    )
                 },
                 'moderate': {
-                    'description': "Balance emotional support with practical guidance.",
+                    'description': (
+                        "Blend practical guidance with an understanding tone. Offer empathy and reassurance in moderation, "
+                        "acknowledging the emotional toll on parents while remaining focused on actionable steps. "
+                        "This style suits parents who need both information and a touch of emotional support."
+                    ),
                     'markers': [
-                        "Acknowledge concerns briefly",
-                        "Include occasional reassurance",
-                        "Focus primarily on actionable information"
+                        "Offer concise reassurance or acknowledgment of emotional concerns",
+                        "Use a calm, composed tone when discussing sensitive topics",
+                        "Focus on factual steps while occasionally validating feelings",
+                        "Provide logical explanations tied to practical benefits",
+                        "Encourage parents to stay hopeful but also realistic"
                     ],
-                    'example': "While these symptoms can be concerning, there are several effective management strategies available. Let's focus on the practical steps you can take."
+                    'example': (
+                        "It can be distressing to see your child in pain, and your concerns are completely valid. "
+                        "Fortunately, there are effective ways to manage these episodes. By following a regular medication schedule, "
+                        "maintaining good hydration, and consulting with a specialist when symptoms worsen, you can significantly "
+                        "reduce the impact of sickle cell disease on your child’s daily life."
+                    )
                 },
                 'high': {
-                    'description': "Prioritize emotional support and reassurance.",
+                    'description': (
+                        "Prioritize emotional support and reassurance in your communication. This style is particularly appropriate "
+                        "for parents who feel anxious or overwhelmed and benefit from consistent empathy. Stress that their feelings "
+                        "are normal and that help is available."
+                    ),
                     'markers': [
-                        "Lead with emotional validation",
-                        "Include frequent reassurance",
-                        "Acknowledge and normalize feelings"
+                        "Use language that frequently validates parents’ worries and emotional state",
+                        "Reassure them that they are doing their best for their child",
+                        "Incorporate comforting phrases to normalize their fears and anxieties",
+                        "Acknowledge emotional burden and emphasize partnership in the child’s care",
+                        "Balance emotional support with appropriate medical guidance"
                     ],
-                    'example': "I understand how overwhelming and scary these symptoms must be for you and your child. It's completely normal to feel worried, and I want you to know that we're here to support you every step of the way."
+                    'example': (
+                        "I truly understand how overwhelming this can be. It’s never easy watching your child struggle with pain or frequent doctor visits. "
+                        "You’re doing everything you can to help them, and that dedication makes a big difference. We’ll work closely together to explore the "
+                        "best treatments and support options to give your child the healthiest, happiest life possible."
+                    )
                 }
             },
             'professionalStyle': {
                 'laypersonFriendly': {
-                    'description': "Use simple terms and everyday analogies.",
+                    'description': (
+                        "Use plain language and familiar analogies that even those without medical backgrounds can grasp. "
+                        "Strive to simplify complex medical ideas, ensuring parents feel comfortable and confident "
+                        "asking follow-up questions without feeling intimidated."
+                    ),
                     'markers': [
-                        "Avoid medical jargon",
-                        "Use everyday analogies",
-                        "Explain concepts using familiar references"
+                        "Use everyday examples (e.g., comparing red blood cells to tiny boats or cars)",
+                        "Avoid excessive medical jargon; if used, provide simple definitions immediately",
+                        "Break down complex processes into step-by-step explanations",
+                        "Confirm understanding by encouraging feedback or questions from parents",
+                        "Emphasize collaboration in caring for the child"
                     ],
-                    'example': "Think of blood cells like tiny boats carrying oxygen through rivers in your body. In sickle cell disease, these boats become shaped more like crescents."
+                    'example': (
+                        "Think of your child’s bloodstream as a series of roads that cars (red blood cells) travel on. "
+                        "In sickle cell disease, some of these cars become shaped like a crescent, making it harder for them to move "
+                        "and sometimes causing a traffic jam. Let’s talk about what we can do to keep those cells moving smoothly."
+                    )
                 },
                 'clinicallyBalanced': {
-                    'description': "Blend medical terminology with accessible explanations.",
+                    'description': (
+                        "Combine the use of standard medical terminology with clear, accessible explanations. "
+                        "This approach reassures parents of your expertise while ensuring they can follow along "
+                        "without feeling lost in technical details."
+                    ),
                     'markers': [
-                        "Use medical terms with immediate explanations",
-                        "Balance technical accuracy with clarity",
-                        "Include both scientific and lay terminology"
+                        "Introduce and define medical terms in plain language",
+                        "Use a structured approach, starting with basic concepts before building to more complex ones",
+                        "Reference well-known guidelines or therapies, explaining how they work in everyday situations",
+                        "Encourage parents to ask questions about any terms or concepts that remain unclear",
+                        "Include general clinical data or research in a digestible format"
                     ],
-                    'example': "Vaso-occlusive crises - episodes where blood vessels become blocked by sickle-shaped cells - can cause severe pain."
+                    'example': (
+                        "Vaso-occlusive crises occur when sickle-shaped red blood cells block small blood vessels, leading to pain and tissue damage. "
+                        "Medications like hydroxyurea help by making red blood cells less likely to form that sickle shape, "
+                        "thus reducing the chance of these painful blockages."
+                    )
                 },
                 'technical': {
-                    'description': "Use advanced medical terminology and concepts.",
+                    'description': (
+                        "Employ advanced medical terminology and in-depth physiological or clinical explanations. "
+                        "Best suited for discussions with parents who have a strong medical background or a desire "
+                        "for highly detailed scientific information."
+                    ),
                     'markers': [
-                        "Employ specialized medical vocabulary",
-                        "Include detailed physiological explanations",
-                        "Reference specific medical processes"
+                        "Use specialized medical vocabulary (e.g., 'polymerization of hemoglobin S')",
+                        "Include references to pathophysiological mechanisms and research findings where relevant",
+                        "Discuss treatment protocols in detail, including dosing considerations and scientific rationale",
+                        "Highlight potential comorbidities or complications with clinical specificity",
+                        "Include possible future developments or ongoing clinical trials if applicable"
                     ],
-                    'example': "The pathophysiology involves polymerization of deoxygenated hemoglobin S, leading to erythrocyte sickling and subsequent vaso-occlusion."
+                    'example': (
+                        "The pathological basis of sickle cell disease involves the polymerization of deoxygenated hemoglobin S (HbS), "
+                        "resulting in rigid, sickle-shaped erythrocytes. These abnormal cells obstruct microcirculation, "
+                        "leading to ischemia-reperfusion injury and subsequent inflammatory responses. Current management strategies, "
+                        "including hydroxyurea administration at optimized dosages, aim to enhance fetal hemoglobin (HbF) levels, "
+                        "minimize hemolysis, and decrease the incidence of vaso-occlusive episodes."
+                    )
                 }
             }
         }
+
 
     def process_search_results(self, results: List[Dict], query: str, parameters: dict = None) -> Dict[str, Any]:
         """Process search results with enhanced styling and OpenAI analysis."""
