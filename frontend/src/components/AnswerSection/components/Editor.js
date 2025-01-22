@@ -1,4 +1,3 @@
-// src/components/AnswerSection/components/Editor.js
 import React from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -111,13 +110,48 @@ const MenuBar = ({ editor, onReset, onClear }) => {
   );
 };
 
+const processContent = (content) => {
+  if (!content) return '';
+  
+  // Replace markdown with HTML
+  let processedContent = content
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code>$1</code>')
+    .replace(/^#\s+(.*)$/gm, '<h1>$1</h1>')
+    .replace(/^##\s+(.*)$/gm, '<h2>$1</h2>')
+    .replace(/^###\s+(.*)$/gm, '<h3>$1</h3>');
+
+  // Handle bullet points
+  processedContent = processedContent.split('\n').map(line => {
+    if (line.trim().startsWith('* ')) {
+      return `<ul><li>${line.trim().substring(2)}</li></ul>`;
+    }
+    return line;
+  }).join('\n');
+
+  return processedContent;
+};
+
 const Editor = ({ value, onChange, onReset, onClear, readonly = false }) => {
   const editor = useEditor({
     extensions: [
-      StarterKit,
-      Highlight,
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3]
+        },
+        bulletList: {
+          keepMarks: true,
+          keepAttributes: true
+        },
+        orderedList: {
+          keepMarks: true,
+          keepAttributes: true
+        }
+      }),
+      Highlight
     ],
-    content: value,
+    content: processContent(value),
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
@@ -126,13 +160,20 @@ const Editor = ({ value, onChange, onReset, onClear, readonly = false }) => {
 
   React.useEffect(() => {
     if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value);
+      const processedContent = processContent(value);
+      editor.commands.setContent(processedContent);
     }
   }, [value, editor]);
 
+  React.useEffect(() => {
+    if (editor) {
+      editor.setEditable(!readonly);
+    }
+  }, [readonly, editor]);
+
   return (
     <div className="w-full border rounded-lg overflow-hidden bg-white h-full flex flex-col">
-      <MenuBar editor={editor} onReset={onReset} onClear={onClear} />
+      {!readonly && <MenuBar editor={editor} onReset={onReset} onClear={onClear} />}
       <div className="flex-1 overflow-auto">
         <div className="p-4 prose max-w-none min-h-full">
           <EditorContent editor={editor} />
