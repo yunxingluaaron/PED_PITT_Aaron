@@ -25,8 +25,8 @@ const DashboardLayout = () => {
   const [selectedHistoryQuestion, setSelectedHistoryQuestion] = useState(null);
   const [currentQuestionId, setCurrentQuestionId] = useState(null); // Add this state
   const [dimensions, setDimensions] = useState({
-    questions: { width: 800, height: 200 },
-    answers: { width: 800, height: 400 },
+    questions: { width: 1200, height: 200 },
+    answers: { width: 1200, height: 400 },
     reference: { width: 300, height: 600 }
   });
 
