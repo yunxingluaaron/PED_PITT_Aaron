@@ -15,6 +15,7 @@ const PrivateRoute = ({ children }) => {
   return isLoggedIn ? children : <Navigate to="/login" />;
 };
 
+
 const DashboardLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState('');
