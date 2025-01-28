@@ -285,222 +285,234 @@ class ElasticsearchQuerier:
         """
 
         self.style_map = {
-            'tone': {
-                'friendly': {
-                    'description': (
-                        "Adopt a warm, reassuring style that fosters a personal connection with parents. "
-                        "Use welcoming language and inclusive pronouns (e.g., 'we' or 'together') to build trust. "
-                        "Aim to convey empathy and genuine concern for the child's well-being while explaining medical details."
-                    ),
-                    'markers': [
-                        "Use a friendly, approachable tone and first-person pronouns such as 'I' or 'we'",
-                        "Include gentle phrases (e.g., 'you know,' 'let’s see') to put parents at ease",
-                        "Offer brief, relatable anecdotes or stories to illustrate points",
-                        "Rephrase technical terms or clarify them in plain language when first introduced",
-                        "Acknowledge the emotional concerns parents may have in a caring but non-patronizing way"
-                    ],
-                    'example': (
-                        "I understand it can be scary to see your child in pain, especially when it happens often. "
-                        "But remember, you’re not alone, and there are steps we can take together to make a difference. "
-                        "Let’s go through each symptom and talk about simple, effective ways to help your child feel more comfortable."
-                    )
-                },
-                'balanced': {
-                    'description': (
-                        "Combine a professional, knowledgeable tone with an approachable manner. "
-                        "This style offers enough technical depth to reassure parents of your expertise, "
-                        "while remaining accessible and easy to follow. Aim for clarity and empathy without extensive informality."
-                    ),
-                    'markers': [
-                        "Maintain a measured, informed tone that balances professional and accessible language",
-                        "Introduce medical terms alongside concise, plain-language definitions",
-                        "Use calm, reassuring language to instill confidence without being overly casual",
-                        "Encourage questions and clarify complex areas without overwhelming detail",
-                        "Acknowledge that parents may feel worried while offering balanced reassurance"
-                    ],
-                    'example': (
-                        "Sickle cell disease can lead to changes in the shape of red blood cells, causing potential blockages "
-                        "in blood vessels. While it may sound concerning, there are evidence-based treatments and preventive measures "
-                        "that can greatly help manage your child's symptoms and overall health. Let’s explore these step by step."
-                    )
-                },
-                'formal': {
-                    'description': (
-                        "Present information in a structured, authoritative manner, using precise medical terminology "
-                        "and a more formal register. This style positions you as a subject-matter expert who communicates "
-                        "complex details systematically and objectively."
-                    ),
-                    'markers': [
-                        "Use advanced medical terms and formal phrasing",
-                        "Prefer a third-person perspective or passive constructions (e.g., 'it is recommended')",
-                        "Employ transitional phrases like 'furthermore,' 'in addition,' or 'moreover' to structure discourse",
-                        "Maintain a respectful distance and professional tone, focusing on clear, factual statements",
-                        "Clarify intricate concepts thoroughly, anticipating the need for explicit definitions"
-                    ],
-                    'example': (
-                        "Clinical evaluation of sickle cell disease frequently reveals vaso-occlusive episodes, "
-                        "manifested by acute pain crises and potential organ damage. Moreover, prophylactic interventions, "
-                        "such as hydroxyurea therapy, may significantly reduce the frequency of these occurrences."
-                    )
-                }
-            },
-            'detailLevel': {
-                'brief': {
-                    'description': "Provide concise answers that focus on essential information. Ideal for busy parents needing quick insights without depth.",
-                    'markers': [
-                        "Quick, essential overviews only",
-                        "Limit details to key actions or conclusions",
-                        "Avoid in-depth background",
-                        "Use direct, brief sentences",
-                        "Minimize technical terms"
-                    ],
-                    'example': "To manage sickle cell disease, ensure regular medical check-ups, control pain, and keep hydrated. These measures help prevent complications and maintain health."
-                },
-                'moderate': {
-                    'description': "Balance conciseness with enough detail to give clarity. Explain recommendations clearly, providing some medical background to help parents understand their importance.",
-                    'markers': [
-                        "Brief explanations of important concepts",
-                        "Use examples to clarify crucial points",
-                        "Discuss treatment effectiveness briefly",
-                        "Outline actionable steps for home care",
-                        "Provide context to anticipate common questions"
-                    ],
-                    'example': "Sickle cell disease causes red blood cells to harden and form a crescent shape, blocking blood flow. Prevent crises by keeping hydrated, managing temperature, and adhering to medication plans."
-                },
-                'comprehensive': {
-                    'description': "Provide thorough explanations, including various aspects of the condition, treatment options, and long-term strategies. Suitable for parents seeking deep understanding.",
-                    'markers': [
-                        "In-depth discussion of disease mechanisms",
-                        "Cite studies and guidelines",
-                        "Compare different treatment strategies",
-                        "Discuss potential complications and prevention",
-                        "Suggest considering comprehensive care options"
-                    ],
-                    'example': "Sickle cell disease stems from a mutation causing hemoglobin S, which under low oxygen, deforms red blood cells into a sickle shape. This can cause blockages and tissue damage. Management strategies include antibiotics, pain management, and regular monitoring to prevent severe complications."
-                }
-            },
-
-            'empathy': {
-                'low': {
-                    'description': (
-                        "Keep the focus strictly on objective information with minimal emotional language. "
-                        "This style may be appropriate for parents who prioritize data, research, and direct solutions "
-                        "over personal reassurance."
-                    ),
-                    'markers': [
-                        "Emphasize clinical outcomes, data, and treatment effectiveness",
-                        "Use impersonal or third-person constructions (e.g., 'the child may experience...')",
-                        "Avoid empathetic phrases or mentions of emotional impact",
-                        "Present facts in a detached, matter-of-fact way",
-                        "Limit reassurance to short statements of efficacy or results"
-                    ],
-                    'example': (
-                        "Current studies show that patients who consistently adhere to prophylactic penicillin have a lower incidence of infections. "
-                        "Pain management protocols further indicate reduced hospitalizations when early intervention is applied."
-                    )
-                },
-                'moderate': {
-                    'description': (
-                        "Blend practical guidance with an understanding tone. Offer empathy and reassurance in moderation, "
-                        "acknowledging the emotional toll on parents while remaining focused on actionable steps. "
-                        "This style suits parents who need both information and a touch of emotional support."
-                    ),
-                    'markers': [
-                        "Offer concise reassurance or acknowledgment of emotional concerns",
-                        "Use a calm, composed tone when discussing sensitive topics",
-                        "Focus on factual steps while occasionally validating feelings",
-                        "Provide logical explanations tied to practical benefits",
-                        "Encourage parents to stay hopeful but also realistic"
-                    ],
-                    'example': (
-                        "It can be distressing to see your child in pain, and your concerns are completely valid. "
-                        "Fortunately, there are effective ways to manage these episodes. By following a regular medication schedule, "
-                        "maintaining good hydration, and consulting with a specialist when symptoms worsen, you can significantly "
-                        "reduce the impact of sickle cell disease on your child’s daily life."
-                    )
-                },
-                'high': {
-                    'description': (
-                        "Prioritize emotional support and reassurance in your communication. This style is particularly appropriate "
-                        "for parents who feel anxious or overwhelmed and benefit from consistent empathy. Stress that their feelings "
-                        "are normal and that help is available."
-                    ),
-                    'markers': [
-                        "Use language that frequently validates parents’ worries and emotional state",
-                        "Reassure them that they are doing their best for their child",
-                        "Incorporate comforting phrases to normalize their fears and anxieties",
-                        "Acknowledge emotional burden and emphasize partnership in the child’s care",
-                        "Balance emotional support with appropriate medical guidance"
-                    ],
-                    'example': (
-                        "I truly understand how overwhelming this can be. It’s never easy watching your child struggle with pain or frequent doctor visits. "
-                        "You’re doing everything you can to help them, and that dedication makes a big difference. We’ll work closely together to explore the "
-                        "best treatments and support options to give your child the healthiest, happiest life possible."
-                    )
-                }
-            },
-            'professionalStyle': {
-                'laypersonFriendly': {
-                    'description': (
-                        "Use plain language and familiar analogies that even those without medical backgrounds can grasp. "
-                        "Strive to simplify complex medical ideas, ensuring parents feel comfortable and confident "
-                        "asking follow-up questions without feeling intimidated."
-                    ),
-                    'markers': [
-                        "Use everyday examples (e.g., comparing red blood cells to tiny boats or cars)",
-                        "Avoid excessive medical jargon; if used, provide simple definitions immediately",
-                        "Break down complex processes into step-by-step explanations",
-                        "Confirm understanding by encouraging feedback or questions from parents",
-                        "Emphasize collaboration in caring for the child"
-                    ],
-                    'example': (
-                        "Think of your child’s bloodstream as a series of roads that cars (red blood cells) travel on. "
-                        "In sickle cell disease, some of these cars become shaped like a crescent, making it harder for them to move "
-                        "and sometimes causing a traffic jam. Let’s talk about what we can do to keep those cells moving smoothly."
-                    )
-                },
-                'clinicallyBalanced': {
-                    'description': (
-                        "Combine the use of standard medical terminology with clear, accessible explanations. "
-                        "This approach reassures parents of your expertise while ensuring they can follow along "
-                        "without feeling lost in technical details."
-                    ),
-                    'markers': [
-                        "Introduce and define medical terms in plain language",
-                        "Use a structured approach, starting with basic concepts before building to more complex ones",
-                        "Reference well-known guidelines or therapies, explaining how they work in everyday situations",
-                        "Encourage parents to ask questions about any terms or concepts that remain unclear",
-                        "Include general clinical data or research in a digestible format"
-                    ],
-                    'example': (
-                        "Vaso-occlusive crises occur when sickle-shaped red blood cells block small blood vessels, leading to pain and tissue damage. "
-                        "Medications like hydroxyurea help by making red blood cells less likely to form that sickle shape, "
-                        "thus reducing the chance of these painful blockages."
-                    )
-                },
-                'technical': {
-                    'description': (
-                        "Employ advanced medical terminology and in-depth physiological or clinical explanations. "
-                        "Best suited for discussions with parents who have a strong medical background or a desire "
-                        "for highly detailed scientific information."
-                    ),
-                    'markers': [
-                        "Use specialized medical vocabulary (e.g., 'polymerization of hemoglobin S')",
-                        "Include references to pathophysiological mechanisms and research findings where relevant",
-                        "Discuss treatment protocols in detail, including dosing considerations and scientific rationale",
-                        "Highlight potential comorbidities or complications with clinical specificity",
-                        "Include possible future developments or ongoing clinical trials if applicable"
-                    ],
-                    'example': (
-                        "The pathological basis of sickle cell disease involves the polymerization of deoxygenated hemoglobin S (HbS), "
-                        "resulting in rigid, sickle-shaped erythrocytes. These abnormal cells obstruct microcirculation, "
-                        "leading to ischemia-reperfusion injury and subsequent inflammatory responses. Current management strategies, "
-                        "including hydroxyurea administration at optimized dosages, aim to enhance fetal hemoglobin (HbF) levels, "
-                        "minimize hemolysis, and decrease the incidence of vaso-occlusive episodes."
-                    )
-                }
-            }
+    'tone': {
+        'friendly': {
+            'description': (
+                "Adopt a warm, reassuring style that fosters a personal connection with parents or guardians. "
+                "Use welcoming language and inclusive pronouns (e.g., 'we' or 'together') to build trust. "
+                "Aim to convey empathy and genuine concern for the child's well-being while explaining medical details."
+            ),
+            'markers': [
+                "Use a friendly, approachable tone and first-person pronouns such as 'I' or 'we'",
+                "Include gentle phrases (e.g., 'you know,' 'let’s see') to put parents at ease",
+                "Offer brief, relatable anecdotes or stories to illustrate points",
+                "Rephrase technical terms or clarify them in plain language when first introduced",
+                "Acknowledge the emotional concerns parents may have in a caring but non-patronizing way"
+            ],
+            'example': (
+                "I understand it can be scary to see your child feeling unwell, especially if it seems to happen frequently. "
+                "Remember, you’re not alone, and there are steps we can take together to help your child feel better. "
+                "Let’s discuss each symptom and find practical ways to manage them."
+            )
+        },
+        'balanced': {
+            'description': (
+                "Blend a professional, knowledgeable tone with an approachable manner. "
+                "This style offers enough technical depth to reassure parents of your expertise, "
+                "while remaining accessible and easy to follow. Aim for clarity and empathy without extensive informality."
+            ),
+            'markers': [
+                "Maintain a measured, informed tone that balances professional and accessible language",
+                "Introduce medical terms alongside concise, plain-language definitions",
+                "Use calm, reassuring language to instill confidence without being overly casual",
+                "Encourage questions and clarify complex areas without overwhelming detail",
+                "Acknowledge that parents may feel worried while offering balanced reassurance"
+            ],
+            'example': (
+                "Certain pediatric conditions can lead to frequent infections or discomfort. While it may sound concerning, "
+                "there are evidence-based treatments and preventive measures that can help. Let’s explore these step by step."
+            )
+        },
+        'formal': {
+            'description': (
+                "Present information in a structured, authoritative manner, using precise medical terminology "
+                "and a more formal register. This style positions you as a subject-matter expert who communicates "
+                "complex details systematically and objectively."
+            ),
+            'markers': [
+                "Use advanced medical terms and formal phrasing",
+                "Prefer a third-person perspective or passive constructions (e.g., 'it is recommended')",
+                "Employ transitional phrases like 'furthermore,' 'in addition,' or 'moreover' to structure discourse",
+                "Maintain a respectful distance and professional tone, focusing on clear, factual statements",
+                "Clarify intricate concepts thoroughly, anticipating the need for explicit definitions"
+            ],
+            'example': (
+                "A comprehensive pediatric assessment often involves both physical examination and developmental screening. "
+                "Furthermore, adherence to immunization schedules has been correlated with a reduced incidence of common childhood illnesses."
+            )
         }
+    },
+
+    'detailLevel': {
+        'brief': {
+            'description': (
+                "Provide concise answers that focus on essential information. Ideal for busy parents needing quick insights without depth."
+            ),
+            'markers': [
+                "Quick, essential overviews only",
+                "Limit details to key actions or conclusions",
+                "Avoid in-depth background",
+                "Use direct, brief sentences",
+                "Minimize technical terms"
+            ],
+            'example': (
+                "To support your child's health, ensure regular check-ups, maintain recommended vaccinations, and monitor any changes in their symptoms."
+            )
+        },
+        'moderate': {
+            'description': (
+                "Balance conciseness with enough detail to give clarity. Explain recommendations clearly, providing some medical background to help parents understand their importance."
+            ),
+            'markers': [
+                "Brief explanations of important concepts",
+                "Use examples to clarify crucial points",
+                "Discuss treatment effectiveness briefly",
+                "Outline actionable steps for home care",
+                "Provide context to anticipate common questions"
+            ],
+            'example': (
+                "During a typical pediatric visit, we check growth and development milestones to ensure your child is progressing normally. "
+                "Staying consistent with vaccinations helps protect against common illnesses and supports overall well-being."
+            )
+        },
+        'comprehensive': {
+            'description': (
+                "Provide thorough explanations, including various aspects of the condition, treatment options, and long-term strategies. "
+                "Suitable for parents seeking an in-depth understanding."
+            ),
+            'markers': [
+                "In-depth discussion of underlying mechanisms or causes",
+                "Cite studies and guidelines",
+                "Compare different treatment strategies",
+                "Discuss potential complications and prevention",
+                "Suggest considering comprehensive care options"
+            ],
+            'example': (
+                "Certain pediatric conditions may be influenced by genetic factors and environmental triggers, "
+                "leading to recurring symptoms. Management strategies could include specialized therapies, routine check-ups, "
+                "and tailored home interventions. Research published in leading pediatric journals supports early intervention "
+                "as a key factor in improving long-term outcomes."
+            )
+        }
+    },
+
+    'empathy': {
+        'low': {
+            'description': (
+                "Keep the focus strictly on objective information with minimal emotional language. "
+                "This style may be appropriate for parents who prioritize data, research, and direct solutions "
+                "over personal reassurance."
+            ),
+            'markers': [
+                "Emphasize clinical outcomes, data, and treatment effectiveness",
+                "Use impersonal or third-person constructions (e.g., 'the child may experience...')",
+                "Avoid empathetic phrases or mentions of emotional impact",
+                "Present facts in a detached, matter-of-fact way",
+                "Limit reassurance to short statements of efficacy or results"
+            ],
+            'example': (
+                "Studies indicate that children receiving regular developmental screenings have fewer missed diagnoses. "
+                "Adhering to treatment protocols is correlated with improved outcomes for conditions such as asthma or eczema."
+            )
+        },
+        'moderate': {
+            'description': (
+                "Blend practical guidance with an understanding tone. Offer empathy and reassurance in moderation, "
+                "acknowledging the emotional toll on parents while remaining focused on actionable steps. "
+                "This style suits parents who need both information and a touch of emotional support."
+            ),
+            'markers': [
+                "Offer concise reassurance or acknowledgment of emotional concerns",
+                "Use a calm, composed tone when discussing sensitive topics",
+                "Focus on factual steps while occasionally validating feelings",
+                "Provide logical explanations tied to practical benefits",
+                "Encourage parents to stay hopeful but also realistic"
+            ],
+            'example': (
+                "I know it can feel overwhelming when your child experiences frequent colds. "
+                "However, maintaining a consistent handwashing routine, a balanced diet, and regular check-ups can greatly reduce both the frequency and severity of these illnesses."
+            )
+        },
+        'high': {
+            'description': (
+                "Prioritize emotional support and reassurance in your communication. This style is particularly appropriate "
+                "for parents who feel anxious or overwhelmed and benefit from consistent empathy. Stress that their feelings "
+                "are valid and that help is available."
+            ),
+            'markers': [
+                "Use language that frequently validates parents’ worries and emotional state",
+                "Reassure them that they are doing their best for their child",
+                "Incorporate comforting phrases to normalize their fears and anxieties",
+                "Acknowledge emotional burden and emphasize partnership in the child’s care",
+                "Balance emotional support with appropriate medical guidance"
+            ],
+            'example': (
+                "I truly understand how concerning it can be when your little one is feeling unwell. "
+                "It’s never easy watching them struggle, but please remember that you’re already taking important steps by asking questions and seeking care. "
+                "We’ll work together to find the best approach for your child’s needs."
+            )
+        }
+    },
+
+    'professionalStyle': {
+        'laypersonFriendly': {
+            'description': (
+                "Use plain language and familiar analogies that even those without medical backgrounds can grasp. "
+                "Strive to simplify complex medical ideas, ensuring parents feel comfortable and confident asking "
+                "follow-up questions without feeling intimidated."
+            ),
+            'markers': [
+                "Use everyday examples (e.g., comparing the body to a machine that sometimes needs a tune-up)",
+                "Avoid excessive medical jargon; if used, provide simple definitions immediately",
+                "Break down complex processes into step-by-step explanations",
+                "Confirm understanding by encouraging feedback or questions from parents",
+                "Emphasize collaboration in caring for the child"
+            ],
+            'example': (
+                "Think of your child’s immune system like a protective shield. Sometimes, that shield gets weak, and germs can sneak in, causing illness. "
+                "Let’s talk about the ways we can help strengthen that shield, like good nutrition, plenty of rest, and regular handwashing."
+            )
+        },
+        'clinicallyBalanced': {
+            'description': (
+                "Combine the use of standard medical terminology with clear, accessible explanations. "
+                "This approach reassures parents of your expertise while ensuring they can follow along "
+                "without feeling lost in technical details."
+            ),
+            'markers': [
+                "Introduce and define medical terms in plain language",
+                "Use a structured approach, starting with basic concepts before building to more complex ones",
+                "Reference well-known guidelines or therapies, explaining how they work in everyday situations",
+                "Encourage parents to ask questions about any terms or concepts that remain unclear",
+                "Include general clinical data or research in a digestible format"
+            ],
+            'example': (
+                "If your child often experiences ear infections, known medically as otitis media, we can manage them by using appropriate antibiotics, "
+                "ensuring follow-up exams, and possibly exploring preventive measures if infections are recurrent."
+            )
+        },
+        'technical': {
+            'description': (
+                "Employ advanced medical terminology and in-depth physiological or clinical explanations. "
+                "Best suited for discussions with parents who have a strong medical background or a desire "
+                "for highly detailed scientific information."
+            ),
+            'markers': [
+                "Use specialized medical vocabulary (e.g., 'inflammatory response', 'pathophysiology')",
+                "Include references to relevant clinical guidelines or research findings where applicable",
+                "Discuss treatment protocols in detail, including dosing considerations and scientific rationale",
+                "Highlight potential comorbidities or complications with clinical specificity",
+                "Include possible future developments or ongoing clinical trials if applicable"
+            ],
+            'example': (
+                "Recurrent otitis media can lead to complications such as tympanic membrane perforation or conductive hearing loss. "
+                "Current guidelines suggest a watch-and-wait approach for mild symptoms, followed by antibiotic therapy when clinically indicated, "
+                "to mitigate antibiotic resistance. For persistent cases, tympanostomy tubes may be considered."
+            )
+        }
+    }
+}
+
 
 
     def process_search_results(self, results: List[Dict], query: str, parameters: dict = None) -> Dict[str, Any]:
@@ -542,15 +554,40 @@ class ElasticsearchQuerier:
             response = self.openai_client.chat.completions.create(
                 model="gpt-4-turbo",
                 messages=[
-                    {
-                        "role": "system",
-                        "content": f"You are an expert medical professional specializing in sickle cell disease. "
-                                 f"Maintain the following communication style consistently:\n\n{style_instructions}\n\n"
-                                 f"Every piece of information must be supported by specific citations from the provided sources."
-                    },
+                {
+                    "role": "system",
+                    "content": """You are Dr. Aaron Lu, a pediatrician with expertise in child development. Follow these guidelines:
+
+                FORMAT REQUIREMENTS:
+                - Use clear Markdown formatting with proper spacing
+                - Include a blank line before and after each header
+                - Use level 2 headers (##) for main sections
+                - Use level 3 headers (###) for subsections
+                - Each paragraph must be separated by a blank line
+                - Citations must appear at the end of each relevant statement
+
+                CONTENT STRUCTURE:
+        
+                1. Present information in distinct sections
+                2. Each section should:
+                - Include relevant medical information with citations
+                - End with practical implications or guidance
+                3. Use bullet points only for lists of specific items or steps
+
+                CITATION REQUIREMENTS:
+                - Every medical fact must include a citation: (Source: [Title], Page [number])
+                - Multiple citations should be separated by semicolons
+                - Citations should appear immediately after the relevant information
+
+                END FORMAT:
+                Conclude with a supportive closing paragraph and your signature:
+                "Best regards,
+                Dr. Aaron Lu"
+                """
+                },
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.3  # Allow for style variation while maintaining accuracy
+                temperature=0.0  # Allow for style variation while maintaining accuracy
             )
             analysis = response.choices[0].message.content
             
@@ -602,24 +639,28 @@ class ElasticsearchQuerier:
     def _create_structured_prompt(self, query: str, formatted_text: str, style_instructions: str) -> str:
         """Create a structured prompt with clear sections."""
         return f"""
-PATIENT QUESTION:
-"{query}"
+You have a parent named Susan, who is asking questions about: {query} regarding her child.
+
+Below is the RELEVANT MEDICAL INFORMATION that you have discovered in relation to her query:
+{formatted_text}
+
+Now you will write a message to Susan, ensuring it follows these communication requirements to demonstrate thorough care and professionalism as a pediatric doctor.
 
 COMMUNICATION STYLE REQUIREMENTS:
 {style_instructions}
 
-RELEVANT MEDICAL INFORMATION:
-{formatted_text}
-
 RESPONSE REQUIREMENTS:
+0. Begin with **"Dear Susan,"** and write from the perspective of **Dr. Aaron Lu**, a pediatrician.
 1. Maintain the specified communication style consistently throughout your response.
-2. Cite EVERY piece of medical information using the format: (Source: [article name], Page [number])
+2. **Cite EVERY piece of medical information** using the format **(Source: [article name], Page [number]).**
 3. If multiple sources support a statement, cite all relevant sources.
-4. Break your response into clear paragraphs for readability.
-5. Only use information from the provided sources - clearly state if information is not available.
-6. Begin with appropriate emotional acknowledgment based on the specified empathy level.
-7. Structure your response with clear progression from acknowledgment to explanation to recommendations.
-8. End with appropriate closing based on the specified tone and empathy level.
+4. Present your response in **Markdown format**, using:
+   - **Heading levels** (`#`, `##`, `###`) for main sections and sub-sections
+   - **Line breaks** between paragraphs
+   - **Bullet points** where appropriate
+5. Use only the information from the provided sources. If information is not available, clearly state that.
+6. Open your message with an **appropriate emotional acknowledgment** based on the specified empathy level.
+7. Organize your response to progress logically from **acknowledgment → explanation → recommendations**.
+8. End with a **closing** that reflects the specified tone and empathy level.
 
-Please provide your response following these guidelines while maintaining medical accuracy and appropriate citations.
 """

@@ -12,14 +12,19 @@ const QuestionSection = ({
   const [question, setQuestion] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
   const wasSetFromHistory = useRef(false);
+  const [parentName, setParentName] = useState('');
   
-// Make sure your dropdownValues state matches these IDs
-const [dropdownValues, setDropdownValues] = useState({
-  tone: 'balanced',           // Default to balanced tone
-  detailLevel: 'moderate',    // Default to moderate detail
-  empathy: 'moderate',        // Default to moderate empathy
-  professionalStyle: 'clinicallyBalanced'  // Default to clinically balanced style
-});
+  const [dropdownValues, setDropdownValues] = useState({
+    // Response Style dropdowns
+    tone: 'balanced',
+    detailLevel: 'moderate',
+    empathy: 'moderate',
+    professionalStyle: 'clinicallyBalanced',
+    // Parent Details dropdowns
+    parentType: 'both',
+    personality: 'balanced',
+    ageRange: '30-35'
+  });
 
   // Log component render
   console.log('🟡 QuestionSection rendered:', {
@@ -47,7 +52,6 @@ const [dropdownValues, setDropdownValues] = useState({
     
     if (initialQuestion) {
       setQuestion(initialQuestion);
-      // Only submit if it's not from history
       if (!wasSetFromHistory.current) {
         handleQuestionSubmit(initialQuestion);
       }
@@ -74,9 +78,17 @@ const [dropdownValues, setDropdownValues] = useState({
   
     setLocalLoading(true);
     try {
+      // Only send original response style parameters to backend
+      const responseStyleParameters = {
+        tone: dropdownValues.tone,
+        detailLevel: dropdownValues.detailLevel,
+        empathy: dropdownValues.empathy,
+        professionalStyle: dropdownValues.professionalStyle
+      };
+      
       await onQuestionSubmit({
         question: value,
-        parameters: dropdownValues
+        parameters: responseStyleParameters
       });
     } catch (error) {
       console.error('Error submitting question:', error);
@@ -87,15 +99,22 @@ const [dropdownValues, setDropdownValues] = useState({
   const handleClear = () => {
     console.log('🟡 Clearing question');
     setQuestion('');
+    setParentName('');
     wasSetFromHistory.current = false;
-    // Instead of submitting empty string, just reset the history state
     if (selectedHistoryQuestion) {
       console.log('🟡 Resetting history state');
-      // Reset any history-related state without triggering submission
+      // Only send original response style parameters when clearing
+      const responseStyleParameters = {
+        tone: dropdownValues.tone,
+        detailLevel: dropdownValues.detailLevel,
+        empathy: dropdownValues.empathy,
+        professionalStyle: dropdownValues.professionalStyle
+      };
+      
       onQuestionSubmit({ 
         question: '',
-        parameters: dropdownValues,
-        clearOnly: true // Add this flag
+        parameters: responseStyleParameters,
+        clearOnly: true
       });
     }
   };
@@ -107,7 +126,7 @@ const [dropdownValues, setDropdownValues] = useState({
     }));
   };
 
-  const dropdownMenus = [
+  const responseStyleMenus = [
     {
       id: 'tone',
       label: 'Tone',
@@ -146,6 +165,38 @@ const [dropdownValues, setDropdownValues] = useState({
     }
   ];
 
+  const parentDetailsMenus = [
+    {
+      id: 'parentType',
+      label: 'Father/Mother',
+      options: [
+        { value: 'both', label: 'Both Parents' },
+        { value: 'father', label: 'Father' },
+        { value: 'mother', label: 'Mother' }
+      ]
+    },
+    {
+      id: 'personality',
+      label: 'Personality',
+      options: [
+        { value: 'relaxed', label: 'Relaxed' },
+        { value: 'balanced', label: 'Balanced' },
+        { value: 'anxious', label: 'Anxious' }
+      ]
+    },
+    {
+      id: 'ageRange',
+      label: 'Age Range',
+      options: [
+        { value: '20-25', label: '20-25 years' },
+        { value: '25-30', label: '25-30 years' },
+        { value: '30-35', label: '30-35 years' },
+        { value: '35-40', label: '35-40 years' },
+        { value: '40+', label: '40+ years' }
+      ]
+    }
+  ];
+
   return (
     <div className="bg-white rounded-lg shadow-sm">
       <div className={`p-4 transition-all duration-200 ${
@@ -166,8 +217,8 @@ const [dropdownValues, setDropdownValues] = useState({
           <h3 className="text-sm font-medium text-gray-700 mb-2">
             Customize Response Style
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {dropdownMenus.map(menu => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            {responseStyleMenus.map(menu => (
               <DropdownMenu
                 key={menu.id}
                 label={menu.label}
@@ -178,12 +229,47 @@ const [dropdownValues, setDropdownValues] = useState({
               />
             ))}
           </div>
-          
-          {/* Optional: Help text */}
-          <p className="mt-2 text-sm text-gray-500">
-            Adjust these options to customize how the response is written and formatted.
-          </p>
         </div>
+
+        <div className="mt-6">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">
+            Parents Details
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Parent Name Input */}
+            <div className="lg:col-span-4 flex items-center gap-4">
+              <label htmlFor="parentName" className="text-sm font-medium text-gray-700 whitespace-nowrap min-w-[100px]">
+                Parent Name
+              </label>
+              <input
+                type="text"
+                id="parentName"
+                value={parentName}
+                onChange={(e) => setParentName(e.target.value)}
+                disabled={localLoading || isGenerating}
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                placeholder="Enter parent's name"
+              />
+            </div>
+            
+            {/* Existing Dropdown Menus */}
+            {parentDetailsMenus.map(menu => (
+              <DropdownMenu
+                key={menu.id}
+                label={menu.label}
+                options={menu.options}
+                value={dropdownValues[menu.id]}
+                onChange={handleDropdownChange(menu.id)}
+                disabled={localLoading || isGenerating}
+              />
+            ))}
+          </div>
+        </div>
+          
+        {/* Help text */}
+        <p className="mt-2 text-sm text-gray-500">
+          Adjust these options to customize how the response is written and formatted.
+        </p>
       </div>
     </div>
   );

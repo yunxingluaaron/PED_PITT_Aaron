@@ -152,7 +152,7 @@ const DashboardLayout = () => {
               height={dimensions.questions.height}
               onResize={handleResize('questions')}
               minConstraints={[400, 150]} // Increased minimum height
-              maxConstraints={[1200, 400]}
+              maxConstraints={[1200, 800]}
               resizeHandles={['s']}
             >
               <div className="p-4 h-full"> {/* Add padding and full height */}
@@ -171,7 +171,7 @@ const DashboardLayout = () => {
               width={dimensions.answers.width}
               height={dimensions.answers.height}
               onResize={handleResize('answers')}
-              minConstraints={[400, 200]}
+              minConstraints={[400, 400]}
               maxConstraints={[1200, 800]}
               resizeHandles={['s']}
             >
