@@ -533,7 +533,7 @@ class ElasticsearchQuerier:
         # Process search results
         for result in results:
             text_snippet = {
-                'text': result['text_preview'],
+                'text': result['original_text'],
                 'source': f"{result['source']['title']} (Page {result['source']['page_number']})"
             }
             text_content.append(text_snippet)
@@ -590,6 +590,10 @@ class ElasticsearchQuerier:
                 temperature=0.0  # Allow for style variation while maintaining accuracy
             )
             analysis = response.choices[0].message.content
+
+            logger.info(f"Raw analysis from OpenAI: {analysis}")
+
+            print(f"Raw analysis: {analysis}")
             
         except Exception as e:
             logger.error(f"Error in OpenAI analysis: {str(e)}")

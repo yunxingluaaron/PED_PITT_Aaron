@@ -377,6 +377,7 @@ def delete_question(question_id):
         return jsonify({'error': 'Failed to delete question'}), 500
     
     # Add this new endpoint to get full question details
+
 @api.route('/questions/<int:question_id>', methods=['GET'])
 @jwt_required()
 def get_question_details(question_id):
