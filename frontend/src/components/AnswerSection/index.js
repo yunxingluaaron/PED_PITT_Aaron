@@ -215,7 +215,7 @@ export const AnswerSection = ({
     <div id="answer-section" className="h-full flex">
       <div className="flex-1 flex flex-col">
         <div className="flex-1 p-4 overflow-hidden flex flex-col">
-          <h2 className="text-xl font-bold mb-4">AI Generated Response</h2>
+          <h2 className="text-xl font-bold mb-4">VineAI Response</h2>
           <div className="flex-1 overflow-hidden">
             {loading || isGenerating ? (
               <div className="animate-pulse h-full bg-white rounded-lg border p-4">
@@ -252,11 +252,11 @@ export const AnswerSection = ({
           />
         )}
       </div>
-      <VersionControl
+      {/* <VersionControl
         versions={versions}
         currentVersion={currentVersionId}
         onVersionSelect={setCurrentVersionId}
-      />
+      /> */}
     </div>
   );
 };

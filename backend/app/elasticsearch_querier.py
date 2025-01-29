@@ -276,6 +276,145 @@ class ElasticsearchQuerier:
         except Exception as e:
             logger.error(f"Error in hybrid search: {str(e)}")
             raise
+    
+    def _generate_system_messages(self, parameters: dict) -> List[Dict[str, str]]:
+        """Generate structured system messages with style instructions."""
+        selected_styles = {
+            category: self.style_map[category][value]
+            for category, value in parameters.items()
+        }
+        
+        # Base system message with role definition
+        base_system = {
+            "role": "system",
+            "content": """You are Dr. Aaron Lu, a pediatrician with expertise in child development. 
+            You must strictly adhere to the communication style specified in these instructions."""
+        }
+
+        # Style-specific system message
+        style_content = []
+        for category, style in selected_styles.items():
+            style_content.extend([
+                f"\n{category.upper()} REQUIREMENTS:",
+                f"- Follow this style: {style['description']}",
+                "Required language patterns:",
+                *[f"- {marker}" for marker in style['markers']],
+                f"Reference example: {style['example']}"
+            ])
+
+        style_system = {
+            "role": "system",
+            "content": "\n".join(style_content)
+        }
+
+        # Format requirements system message
+        format_system = {
+            "role": "system",
+            "content": """FORMAT REQUIREMENTS:
+            - Use clear Markdown formatting with proper spacing
+            - Include blank lines before and after headers
+            - Use level 2 headers (##) for main sections
+            - Use level 3 headers (###) for subsections
+            - Separate paragraphs with blank lines
+            - Citations: (Source: [Title], Page [number])
+            - Multiple citations separated by semicolons"""
+        }
+
+        return [base_system, style_system, format_system]   
+    
+    def create_chat_messages(self, query: str, formatted_text: str, parameters: dict) -> List[Dict[str, str]]:
+        """Create complete list of chat messages with improved structure."""
+        # Get system messages
+        messages = self._generate_system_messages(parameters)
+        
+        # Create user message with query and context
+        user_message = {
+            "role": "user",
+            "content": f"""You have a parent named Susan, who is asking questions about: {query} regarding her child.
+
+            Below is the RELEVANT MEDICAL INFORMATION that you have discovered in relation to her query:
+            {formatted_text}
+
+            Now you will write a message to Susan, ensuring it follows these communication requirements from the system prompts to demonstrate thorough care and professionalism as a pediatric doctor.
+
+            REQUIREMENTS:
+    0. Begin with **"Dear Susan,"** and write from the perspective of **Dr. Aaron Lu**, a pediatrician.
+    1. Maintain the specified communication style consistently throughout your response.
+    2. **Cite EVERY piece of medical information** using the format **(Source: [article name], Page [number]).**
+    3. If multiple sources support a statement, cite all relevant sources.
+    4. Present your response in **Markdown format**, using:
+    - **Heading levels** (`#`, `##`, `###`) for main sections and sub-sections
+    - **Line breaks** between paragraphs
+    - **Bullet points** where appropriate
+    5. Use only the information from the provided sources. If information is not available, clearly state that.
+    6. Open your message with an **appropriate emotional acknowledgment** based on the specified empathy level.
+    7. Organize your response to progress logically from **acknowledgment → explanation → recommendations**.
+    8. End with a **closing** that reflects the specified tone and empathy level."""
+        }
+        
+        messages.append(user_message)
+        return messages
+
+    def process_search_results(self, results: List[Dict], query: str, parameters: dict = None) -> Dict[str, Any]:
+        """Process search results with improved style control."""
+        # Default parameters
+        parameters = parameters or {
+            'tone': 'balanced',
+            'detailLevel': 'moderate',
+            'empathy': 'moderate',
+            'professionalStyle': 'clinicallyBalanced'
+        }
+
+        logger.info(f"Processing search with parameters: {parameters}")
+
+        # Process search results
+        text_content = []
+        sources = set()
+        for result in results:
+            text_snippet = {
+                'text': result['original_text'],
+                'source': f"{result['source']['title']} (Page {result['source']['page_number']})"
+            }
+            text_content.append(text_snippet)
+            sources.add(text_snippet['source'])
+
+        formatted_text = "\n".join([
+            f"[{snippet['source']}]: {snippet['text']}" 
+            for snippet in text_content
+        ])
+
+        try:
+            # Create structured chat messages
+            messages = self.create_chat_messages(query, formatted_text, parameters)
+
+            # Adjust temperature based on style needs
+            temperature = 0.3
+
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4-turbo",
+                messages=messages,
+                temperature=temperature
+            )
+            
+            analysis = response.choices[0].message.content
+            
+            logger.info(f"Generated response with style parameters: {analysis}")
+            
+        except Exception as e:
+            logger.error(f"Error in OpenAI analysis: {str(e)}")
+            analysis = "Error generating analysis. Please try again."
+
+        return {
+            'text_content': text_content,
+            'sources': list(sources),
+            'analysis': analysis,
+            'metadata': {
+                'num_results': len(results),
+                'num_sources': len(sources),
+                'style_parameters': parameters
+            }
+        }
+
 
     def _initialize_style_templates(self):
         """
@@ -513,158 +652,156 @@ class ElasticsearchQuerier:
     }
 }
 
-
-
-    def process_search_results(self, results: List[Dict], query: str, parameters: dict = None) -> Dict[str, Any]:
-        """Process search results with enhanced styling and OpenAI analysis."""
-        text_content = []
-        sources = set()
+#     def process_search_results(self, results: List[Dict], query: str, parameters: dict = None) -> Dict[str, Any]:
+#         """Process search results with enhanced styling and OpenAI analysis."""
+#         text_content = []
+#         sources = set()
         
-        # Default parameters with slightly higher temperature for style variation
-        parameters = parameters or {
-            'tone': 'balanced',
-            'detailLevel': 'moderate',
-            'empathy': 'moderate',
-            'professionalStyle': 'clinicallyBalanced'
-        }
+#         # Default parameters with slightly higher temperature for style variation
+#         parameters = parameters or {
+#             'tone': 'balanced',
+#             'detailLevel': 'moderate',
+#             'empathy': 'moderate',
+#             'professionalStyle': 'clinicallyBalanced'
+#         }
 
-        logger.info(f"Processing search with parameters: {parameters}")
+#         logger.info(f"Processing search with parameters: {parameters}")
 
-        # Process search results
-        for result in results:
-            text_snippet = {
-                'text': result['original_text'],
-                'source': f"{result['source']['title']} (Page {result['source']['page_number']})"
-            }
-            text_content.append(text_snippet)
-            sources.add(text_snippet['source'])
+#         # Process search results
+#         for result in results:
+#             text_snippet = {
+#                 'text': result['original_text'],
+#                 'source': f"{result['source']['title']} (Page {result['source']['page_number']})"
+#             }
+#             text_content.append(text_snippet)
+#             sources.add(text_snippet['source'])
 
-        formatted_text = "\n".join([
-            f"[{snippet['source']}]: {snippet['text']}" 
-            for snippet in text_content
-        ])
+#         formatted_text = "\n".join([
+#             f"[{snippet['source']}]: {snippet['text']}" 
+#             for snippet in text_content
+#         ])
 
-        # Get enhanced style instructions
-        style_instructions = self._generate_enhanced_style_instructions(parameters)
+#         # Get enhanced style instructions
+#         style_instructions = self._generate_enhanced_style_instructions(parameters)
         
-        # Create a more structured prompt
-        prompt = self._create_structured_prompt(query, formatted_text, style_instructions)
+#         # Create a more structured prompt
+#         prompt = self._create_structured_prompt(query, formatted_text, style_instructions)
 
-        try:
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4-turbo",
-                messages=[
-                {
-                    "role": "system",
-                    "content": """You are Dr. Aaron Lu, a pediatrician with expertise in child development. Follow these guidelines:
+#         try:
+#             response = self.openai_client.chat.completions.create(
+#                 model="gpt-4-turbo",
+#                 messages=[
+#                 {
+#                     "role": "system",
+#                     "content": """You are Dr. Aaron Lu, a pediatrician with expertise in child development. Follow these guidelines:
 
-                FORMAT REQUIREMENTS:
-                - Use clear Markdown formatting with proper spacing
-                - Include a blank line before and after each header
-                - Use level 2 headers (##) for main sections
-                - Use level 3 headers (###) for subsections
-                - Each paragraph must be separated by a blank line
-                - Citations must appear at the end of each relevant statement
+#                 FORMAT REQUIREMENTS:
+#                 - Use clear Markdown formatting with proper spacing
+#                 - Include a blank line before and after each header
+#                 - Use level 2 headers (##) for main sections
+#                 - Use level 3 headers (###) for subsections
+#                 - Each paragraph must be separated by a blank line
+#                 - Citations must appear at the end of each relevant statement
 
-                CONTENT STRUCTURE:
+#                 CONTENT STRUCTURE:
         
-                1. Present information in distinct sections
-                2. Each section should:
-                - Include relevant medical information with citations
-                - End with practical implications or guidance
-                3. Use bullet points only for lists of specific items or steps
+#                 1. Present information in distinct sections
+#                 2. Each section should:
+#                 - Include relevant medical information with citations
+#                 - End with practical implications or guidance
+#                 3. Use bullet points only for lists of specific items or steps
 
-                CITATION REQUIREMENTS:
-                - Every medical fact must include a citation: (Source: [Title], Page [number])
-                - Multiple citations should be separated by semicolons
-                - Citations should appear immediately after the relevant information
+#                 CITATION REQUIREMENTS:
+#                 - Every medical fact must include a citation: (Source: [Title], Page [number])
+#                 - Multiple citations should be separated by semicolons
+#                 - Citations should appear immediately after the relevant information
 
-                END FORMAT:
-                Conclude with a supportive closing paragraph and your signature:
-                "Best regards,
-                Dr. Aaron Lu"
-                """
-                },
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.0  # Allow for style variation while maintaining accuracy
-            )
-            analysis = response.choices[0].message.content
+#                 END FORMAT:
+#                 Conclude with a supportive closing paragraph and your signature:
+#                 "Best regards,
+#                 Dr. Aaron Lu"
+#                 """
+#                 },
+#                     {"role": "user", "content": prompt}
+#                 ],
+#                 temperature=0.0  # Allow for style variation while maintaining accuracy
+#             )
+#             analysis = response.choices[0].message.content
 
-            logger.info(f"Raw analysis from OpenAI: {analysis}")
+#             logger.info(f"Raw analysis from OpenAI: {analysis}")
 
-            print(f"Raw analysis: {analysis}")
+#             print(f"Raw analysis: {analysis}")
             
-        except Exception as e:
-            logger.error(f"Error in OpenAI analysis: {str(e)}")
-            analysis = "Error generating analysis. Please try again."
+#         except Exception as e:
+#             logger.error(f"Error in OpenAI analysis: {str(e)}")
+#             analysis = "Error generating analysis. Please try again."
 
-        return {
-            'text_content': text_content,
-            'sources': list(sources),
-            'analysis': analysis,
-            'metadata': {
-                'num_results': len(results),
-                'num_sources': len(sources),
-                'style_parameters': parameters
-            }
-        }
+#         return {
+#             'text_content': text_content,
+#             'sources': list(sources),
+#             'analysis': analysis,
+#             'metadata': {
+#                 'num_results': len(results),
+#                 'num_sources': len(sources),
+#                 'style_parameters': parameters
+#             }
+#         }
 
-    def _generate_enhanced_style_instructions(self, parameters: dict) -> str:
-        """Generate detailed style instructions with examples."""
-        selected_styles = {
-            category: self.style_map[category][value]
-            for category, value in parameters.items()
-        }
+#     def _generate_enhanced_style_instructions(self, parameters: dict) -> str:
+#         """Generate detailed style instructions with examples."""
+#         selected_styles = {
+#             category: self.style_map[category][value]
+#             for category, value in parameters.items()
+#         }
         
-        instructions = []
+#         instructions = []
         
-        for category, style in selected_styles.items():
-            instructions.extend([
-                f"\n{category.upper()} STYLE GUIDELINES:",
-                f"Description: {style['description']}",
-                "Key Language Markers:",
-                *[f"- {marker}" for marker in style['markers']],
-                f"Example: {style['example']}"
-            ])
+#         for category, style in selected_styles.items():
+#             instructions.extend([
+#                 f"\n{category.upper()} STYLE GUIDELINES:",
+#                 f"Description: {style['description']}",
+#                 "Key Language Markers:",
+#                 *[f"- {marker}" for marker in style['markers']],
+#                 f"Example: {style['example']}"
+#             ])
 
-        # Add style combination guidance
-        tone_level = parameters['tone']
-        empathy_level = parameters['empathy']
-        detail_level = parameters['detailLevel']
+#         # Add style combination guidance
+#         tone_level = parameters['tone']
+#         empathy_level = parameters['empathy']
+#         detail_level = parameters['detailLevel']
         
-        instructions.append("\nSTYLE INTEGRATION GUIDELINES:")
-        instructions.append(f"- Combine {tone_level} tone with {empathy_level} empathy level")
-        instructions.append(f"- Maintain {detail_level} detail level throughout")
-        instructions.append("- Ensure all medical information is accurately cited")
+#         instructions.append("\nSTYLE INTEGRATION GUIDELINES:")
+#         instructions.append(f"- Combine {tone_level} tone with {empathy_level} empathy level")
+#         instructions.append(f"- Maintain {detail_level} detail level throughout")
+#         instructions.append("- Ensure all medical information is accurately cited")
         
-        return "\n".join(instructions)
+#         return "\n".join(instructions)
 
-    def _create_structured_prompt(self, query: str, formatted_text: str, style_instructions: str) -> str:
-        """Create a structured prompt with clear sections."""
-        return f"""
-You have a parent named Susan, who is asking questions about: {query} regarding her child.
+#     def _create_structured_prompt(self, query: str, formatted_text: str, style_instructions: str) -> str:
+#         """Create a structured prompt with clear sections."""
+#         return f"""
+# You have a parent named Susan, who is asking questions about: {query} regarding her child.
 
-Below is the RELEVANT MEDICAL INFORMATION that you have discovered in relation to her query:
-{formatted_text}
+# Below is the RELEVANT MEDICAL INFORMATION that you have discovered in relation to her query:
+# {formatted_text}
 
-Now you will write a message to Susan, ensuring it follows these communication requirements to demonstrate thorough care and professionalism as a pediatric doctor.
+# Now you will write a message to Susan, ensuring it follows these communication requirements to demonstrate thorough care and professionalism as a pediatric doctor.
 
-COMMUNICATION STYLE REQUIREMENTS:
-{style_instructions}
+# COMMUNICATION STYLE REQUIREMENTS:
+# {style_instructions}
 
-RESPONSE REQUIREMENTS:
-0. Begin with **"Dear Susan,"** and write from the perspective of **Dr. Aaron Lu**, a pediatrician.
-1. Maintain the specified communication style consistently throughout your response.
-2. **Cite EVERY piece of medical information** using the format **(Source: [article name], Page [number]).**
-3. If multiple sources support a statement, cite all relevant sources.
-4. Present your response in **Markdown format**, using:
-   - **Heading levels** (`#`, `##`, `###`) for main sections and sub-sections
-   - **Line breaks** between paragraphs
-   - **Bullet points** where appropriate
-5. Use only the information from the provided sources. If information is not available, clearly state that.
-6. Open your message with an **appropriate emotional acknowledgment** based on the specified empathy level.
-7. Organize your response to progress logically from **acknowledgment → explanation → recommendations**.
-8. End with a **closing** that reflects the specified tone and empathy level.
+# RESPONSE REQUIREMENTS:
+# 0. Begin with **"Dear Susan,"** and write from the perspective of **Dr. Aaron Lu**, a pediatrician.
+# 1. Maintain the specified communication style consistently throughout your response.
+# 2. **Cite EVERY piece of medical information** using the format **(Source: [article name], Page [number]).**
+# 3. If multiple sources support a statement, cite all relevant sources.
+# 4. Present your response in **Markdown format**, using:
+#    - **Heading levels** (`#`, `##`, `###`) for main sections and sub-sections
+#    - **Line breaks** between paragraphs
+#    - **Bullet points** where appropriate
+# 5. Use only the information from the provided sources. If information is not available, clearly state that.
+# 6. Open your message with an **appropriate emotional acknowledgment** based on the specified empathy level.
+# 7. Organize your response to progress logically from **acknowledgment → explanation → recommendations**.
+# 8. End with a **closing** that reflects the specified tone and empathy level.
 
-"""
+# """
