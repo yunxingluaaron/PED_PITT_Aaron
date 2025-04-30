@@ -311,11 +311,7 @@ const LandingPage = () => {
 
       {/* Keyboard shortcuts info */}
       <div className="absolute bottom-4 left-4 text-white/70 text-sm">
-        <p>Keyboard shortcuts:</p>
-        <ul className="mt-1">
-          <li>Space - Play/Pause</li>
-          <li>←/→ - Previous/Next image</li>
-        </ul>
+        <p>© Powered by PITT & UPMC</p>
       </div>
     </div>
   );
