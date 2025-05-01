@@ -1,5 +1,3 @@
-##__init__.py
-
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -33,9 +31,7 @@ def create_app(config_name=None):
     db.init_app(app)
     jwt.init_app(app)
     
-
-# Configure CORS
-# Configure CORS
+    # Configure CORS
     CORS(app, resources={
         r"/api/*": {
             "origins": ["http://localhost:3000"],
@@ -43,10 +39,10 @@ def create_app(config_name=None):
             "allow_headers": ["Content-Type", "Authorization"],
             "expose_headers": ["Content-Range", "X-Total-Count"],
             "supports_credentials": True,
-            "allow_credentials": True  # Add this line
+            "allow_credentials": True
         }
     })
-        
+    
     # JWT configuration
     @jwt.token_in_blocklist_loader
     def check_if_token_is_revoked(jwt_header, jwt_payload):
@@ -98,10 +94,14 @@ def create_app(config_name=None):
     
     # Register blueprints
     from app.auth import auth_bp
-    from app.routes import api
-    
-    app.register_blueprint(api, url_prefix='/api')
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    
+    # Import API blueprint initialization function
+    # This pattern avoids circular imports
+    from app.api import api, init_app as init_api
+    
+    # Initialize API with the app
+    init_api(app)
     
     # Create database tables
     with app.app_context():
