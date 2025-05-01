@@ -19,11 +19,7 @@ const QuestionSection = ({
     tone: 'balanced',
     detailLevel: 'moderate',
     empathy: 'moderate',
-    professionalStyle: 'clinicallyBalanced',
-    // Parent Details dropdowns
-    parentType: 'both',
-    personality: 'balanced',
-    ageRange: '30-35'
+    professionalStyle: 'clinicallyBalanced'
   });
 
   // Log component render
@@ -88,7 +84,8 @@ const QuestionSection = ({
       
       await onQuestionSubmit({
         question: value,
-        parameters: responseStyleParameters
+        parameters: responseStyleParameters,
+        parentName: parentName // Add parentName to the submission
       });
     } catch (error) {
       console.error('Error submitting question:', error);
@@ -165,44 +162,28 @@ const QuestionSection = ({
     }
   ];
 
-  const parentDetailsMenus = [
-    {
-      id: 'parentType',
-      label: 'Father/Mother',
-      options: [
-        { value: 'both', label: 'Both Parents' },
-        { value: 'father', label: 'Father' },
-        { value: 'mother', label: 'Mother' }
-      ]
-    },
-    {
-      id: 'personality',
-      label: 'Personality',
-      options: [
-        { value: 'relaxed', label: 'Relaxed' },
-        { value: 'balanced', label: 'Balanced' },
-        { value: 'anxious', label: 'Anxious' }
-      ]
-    },
-    {
-      id: 'ageRange',
-      label: 'Age Range',
-      options: [
-        { value: '20-25', label: '20-25 years' },
-        { value: '25-30', label: '25-30 years' },
-        { value: '30-35', label: '30-35 years' },
-        { value: '35-40', label: '35-40 years' },
-        { value: '40+', label: '40+ years' }
-      ]
-    }
-  ];
-
   return (
     <div className="bg-white rounded-lg shadow-sm">
       <div className={`p-4 transition-all duration-200 ${
         localLoading || isGenerating ? 'opacity-50' : 'opacity-100'
       }`}>
         <h2 className="text-xl font-bold mb-4">Questions Enter</h2>
+        
+        {/* Parent Name Input moved under Questions Enter */}
+        <div className="mb-4 flex items-center gap-4">
+          <label htmlFor="parentName" className="text-sm font-medium text-gray-700 whitespace-nowrap min-w-[100px]">
+            Parent Name
+          </label>
+          <input
+            type="text"
+            id="parentName"
+            value={parentName}
+            onChange={(e) => setParentName(e.target.value)}
+            disabled={localLoading || isGenerating}
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            placeholder="Enter parent's name"
+          />
+        </div>
         
         <QuestionInput
           value={question}
@@ -219,41 +200,6 @@ const QuestionSection = ({
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             {responseStyleMenus.map(menu => (
-              <DropdownMenu
-                key={menu.id}
-                label={menu.label}
-                options={menu.options}
-                value={dropdownValues[menu.id]}
-                onChange={handleDropdownChange(menu.id)}
-                disabled={localLoading || isGenerating}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">
-            Parents Details
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Parent Name Input */}
-            <div className="lg:col-span-4 flex items-center gap-4">
-              <label htmlFor="parentName" className="text-sm font-medium text-gray-700 whitespace-nowrap min-w-[100px]">
-                Parent Name
-              </label>
-              <input
-                type="text"
-                id="parentName"
-                value={parentName}
-                onChange={(e) => setParentName(e.target.value)}
-                disabled={localLoading || isGenerating}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                placeholder="Enter parent's name"
-              />
-            </div>
-            
-            {/* Existing Dropdown Menus */}
-            {parentDetailsMenus.map(menu => (
               <DropdownMenu
                 key={menu.id}
                 label={menu.label}
