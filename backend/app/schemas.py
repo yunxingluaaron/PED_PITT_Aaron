@@ -42,6 +42,7 @@ class MessageBase(BaseModel):
     message: str = Field(..., min_length=1)
     conversation_id: Optional[str] = None
     response_type: Optional[str] = "text"
+    parent_name: Optional[str] = None  # Added parent_name field
 
 class MessageResponse(BaseModel):
     conversation_id: str
@@ -50,11 +51,36 @@ class MessageResponse(BaseModel):
     metadata: Dict[str, Any]
     relationships: List[Dict[str, str]]
     text_content: List[Dict[str, str]]
+    parent_name: Optional[str] = None  # Added parent_name field
 
 class ConversationResponse(BaseModel):
     id: str
     messages: List[Dict[str, Any]]
     created_at: datetime
 
+    class Config:
+        from_attributes = True
+
+class QuestionResponse(BaseModel):
+    id: int
+    content: str
+    created_at: datetime
+    conversation_id: Optional[str] = None
+    parent_name: Optional[str] = None  # Added parent_name field
+    versions: List[Dict[str, Any]] = []
+
+    class Config:
+        from_attributes = True
+
+class VersionHistoryResponse(BaseModel):
+    id: int
+    question_id: int
+    content: str
+    type: str
+    timestamp: datetime
+    parent_name: Optional[str] = None  # Added parent_name field
+    is_liked: bool
+    is_bookmarked: bool
+    
     class Config:
         from_attributes = True

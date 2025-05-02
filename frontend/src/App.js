@@ -16,6 +16,7 @@ const PrivateRoute = ({ children }) => {
 };
 
 
+// src/App.js - Updated DashboardLayout Component
 const DashboardLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState('');
@@ -23,7 +24,8 @@ const DashboardLayout = () => {
   const [sources, setSources] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedHistoryQuestion, setSelectedHistoryQuestion] = useState(null);
-  const [currentQuestionId, setCurrentQuestionId] = useState(null); // Add this state
+  const [currentQuestionId, setCurrentQuestionId] = useState(null);
+  const [parentName, setParentName] = useState(''); // Add state for parent name
   const [dimensions, setDimensions] = useState({
     questions: { width: 1200, height: 400 },
     answers: { width: 1200, height: 400 },
@@ -32,6 +34,10 @@ const DashboardLayout = () => {
 
   useEffect(() => {
     console.log('🔄 selectedHistoryQuestion changed:', selectedHistoryQuestion);
+    // If selecting a history question, also set its parent name if available
+    if (selectedHistoryQuestion?.parent_name) {
+      setParentName(selectedHistoryQuestion.parent_name);
+    }
   }, [selectedHistoryQuestion]);
 
   useEffect(() => {
@@ -48,17 +54,22 @@ const DashboardLayout = () => {
     if (question.isFromHistory) {
       console.log('🔵 Processing historical question');
       setCurrentAnswer({
-        id: question.id, // Include question ID
+        id: question.id,
         conversation_id: question.conversation_id,
         detailed_response: question.response,
         sources: question.source_data || [],
         metadata: question.response_metadata || {},
-        isHistoricalAnswer: true
+        isHistoricalAnswer: true,
+        parent_name: question.parent_name // Include parent name in current answer
       });
       setSources(question.source_data || []);
       setCurrentQuestion(question.content);
       setSelectedHistoryQuestion(question);
-      setCurrentQuestionId(question.id); // Set question ID
+      setCurrentQuestionId(question.id);
+      // Set parent name if available in the history question
+      if (question.parent_name) {
+        setParentName(question.parent_name);
+      }
       setIsGenerating(false);
     }
   };
@@ -66,14 +77,24 @@ const DashboardLayout = () => {
   const handleQuestionSubmit = async (questionData) => {
     console.log('🔵 handleQuestionSubmit called:', {
       questionData,
-      isHistorical: selectedHistoryQuestion?.isFromHistory
+      isHistorical: selectedHistoryQuestion?.isFromHistory,
+      parentName: questionData.parentName // Log the parent name
     });
   
+    // Store parent name in state
+    if (questionData.parentName !== undefined) {
+      setParentName(questionData.parentName);
+    }
+
     // Add check for clearOnly flag
     if (questionData.clearOnly) {
       setSelectedHistoryQuestion(null);
       setCurrentAnswer(null);
       setCurrentQuestionId(null);
+      // Only clear parent name if explicitly told to
+      if (questionData.clearParentName) {
+        setParentName('');
+      }
       return;
     }
   
@@ -90,11 +111,17 @@ const DashboardLayout = () => {
       setCurrentAnswer(null);
       setCurrentQuestionId(null);
   
-      // Pass the question to AnswerSection
+      // Pass the question and parent name to AnswerSection
       const answerSection = document.getElementById('answer-section');
       if (answerSection) {
+        // Include parent name in the event
+        const enhancedQuestionData = {
+          ...questionData,
+          parentName: questionData.parentName || parentName // Use provided or stored parent name
+        };
+        
         answerSection.dispatchEvent(new CustomEvent('newQuestion', {
-          detail: questionData
+          detail: enhancedQuestionData
         }));
       }
     } catch (error) {
@@ -111,7 +138,11 @@ const DashboardLayout = () => {
         setSources(answer.sources);
       }
       if (answer.id) {
-        setCurrentQuestionId(answer.id); // Set question ID from new answer
+        setCurrentQuestionId(answer.id);
+      }
+      // If the answer includes a parent name, update the state
+      if (answer.parent_name) {
+        setParentName(answer.parent_name);
       }
       window.dispatchEvent(new Event('questionAdded'));
     }
@@ -145,22 +176,23 @@ const DashboardLayout = () => {
       />
       
       <div className="flex-1 flex">
-        <div className="flex-1 p-4 flex flex-col relative"> {/* Added relative positioning */}
-          <div className="mb-6"> {/* Increased margin bottom */}
+        <div className="flex-1 p-4 flex flex-col relative">
+          <div className="mb-6">
             <ResizablePanel
               width={dimensions.questions.width}
               height={dimensions.questions.height}
               onResize={handleResize('questions')}
-              minConstraints={[400, 150]} // Increased minimum height
+              minConstraints={[400, 150]}
               maxConstraints={[1200, 800]}
               resizeHandles={['s']}
             >
-              <div className="p-4 h-full"> {/* Add padding and full height */}
+              <div className="p-4 h-full">
                 <QuestionSection 
                   onQuestionSubmit={handleQuestionSubmit}
                   isGenerating={isGenerating}
                   initialQuestion={selectedHistoryQuestion?.content}
                   selectedHistoryQuestion={selectedHistoryQuestion}
+                  initialParentName={parentName} // Pass parent name to QuestionSection
                 />
               </div>
             </ResizablePanel>
@@ -175,7 +207,7 @@ const DashboardLayout = () => {
               maxConstraints={[1200, 800]}
               resizeHandles={['s']}
             >
-              <div className="p-4 h-full overflow-auto"> {/* Add padding and scrolling */}
+              <div className="p-4 h-full overflow-auto">
                 <AnswerSection 
                   question={currentQuestion}
                   questionId={currentQuestionId}
@@ -185,6 +217,7 @@ const DashboardLayout = () => {
                   isGenerating={isGenerating}
                   selectedHistoryQuestion={selectedHistoryQuestion}
                   currentAnswer={currentAnswer}
+                  parentName={parentName} // Pass parent name to AnswerSection
                 />
               </div>
             </ResizablePanel>

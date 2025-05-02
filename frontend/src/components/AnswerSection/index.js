@@ -12,7 +12,8 @@ export const AnswerSection = ({
   onSourcesUpdate, 
   isGenerating,
   selectedHistoryQuestion,
-  currentAnswer 
+  currentAnswer,
+  parentName // Add parentName prop
 }) => {
   const {
     loading,
@@ -22,7 +23,9 @@ export const AnswerSection = ({
     relationships,
     metadata,
     questionId,
-    generateAnswerFromQuestion
+    conversationId,
+    generateAnswerFromQuestion,
+    updateParentName // Use the new updateParentName function from hook
   } = useAnswerGeneration();
 
   const {
@@ -38,23 +41,49 @@ export const AnswerSection = ({
   const [editorContent, setEditorContent] = useState('');
   const [originalContent, setOriginalContent] = useState('');
   const [showComparison, setShowComparison] = useState(false);
+  const [currentParentName, setCurrentParentName] = useState(parentName || ''); // Track parent name
   const processedQuestionRef = useRef('');
 
   const currentVersion = getCurrentVersion();
   const initialLoadDone = useRef(false);
 
+  // Update currentParentName when parentName prop changes
+  useEffect(() => {
+    if (parentName !== undefined && parentName !== currentParentName) {
+      console.log('🔄 Parent name updated from props:', parentName);
+      setCurrentParentName(parentName);
+      
+      // Also update the parent name in the hook state
+      if (updateParentName) {
+        updateParentName(parentName);
+      }
+    }
+  }, [parentName, currentParentName, updateParentName]);
+
   // Handle new question submissions
   useEffect(() => {
     const handleNewQuestion = async (event) => {
-      const { question, parameters } = event.detail;
+      const { question, parameters, parentName: eventParentName } = event.detail;
       console.log('🔄 Received new question event:', event.detail);
       
+      // Update parent name from event if provided
+      if (eventParentName !== undefined) {
+        setCurrentParentName(eventParentName);
+      }
+      
       try {
-        const result = await generateAnswerFromQuestion(question, { parameters });
+        const result = await generateAnswerFromQuestion(question, { 
+          parameters,
+          parent_name: eventParentName || currentParentName // Pass parent name to API
+        });
         if (result) {
           console.log('✅ Answer generated:', result);
           if (onAnswerGenerated) {
-            onAnswerGenerated(result);
+            // Include parent name in the result
+            onAnswerGenerated({
+              ...result,
+              parent_name: eventParentName || currentParentName || result.parent_name
+            });
           }
         }
       } catch (error) {
@@ -69,7 +98,7 @@ export const AnswerSection = ({
         element.removeEventListener('newQuestion', handleNewQuestion);
       };
     }
-  }, [generateAnswerFromQuestion, onAnswerGenerated]);
+  }, [generateAnswerFromQuestion, onAnswerGenerated, currentParentName]);
 
   useEffect(() => {
     if (currentAnswer?.isHistoricalAnswer) {
@@ -77,12 +106,24 @@ export const AnswerSection = ({
       setEditorContent(currentAnswer.detailed_response);
       setOriginalContent(currentAnswer.detailed_response);
       
+      // Update parent name if available in the answer
+      if (currentAnswer.parent_name) {
+        setCurrentParentName(currentAnswer.parent_name);
+        
+        // Also update the parent name in the hook state
+        if (updateParentName) {
+          updateParentName(currentAnswer.parent_name);
+        }
+      }
+      
       // Only add version if this is NOT the initial load of a historical answer
       if (!initialLoadDone.current && currentAnswer.isHistoricalAnswer) {
         initialLoadDone.current = true;
         // Don't add version on initial load
       } else if (!currentAnswer.isHistoricalAnswer && !versions.some(v => v.content === currentAnswer.detailed_response)) {
-        addVersion(currentAnswer.detailed_response, 'ai');
+        addVersion(currentAnswer.detailed_response, 'ai', {
+          parent_name: currentAnswer.parent_name || currentParentName
+        });
       }
       
       if (onSourcesUpdate) {
@@ -93,17 +134,29 @@ export const AnswerSection = ({
       setEditorContent(answer);
       setOriginalContent(answer);
       if (!versions.length) {
-        addVersion(answer, 'ai');
+        addVersion(answer, 'ai', {
+          parent_name: currentParentName
+        });
       }
     }
-  }, [answer, currentAnswer]);
+  }, [answer, currentAnswer, versions, addVersion, onSourcesUpdate, currentParentName, updateParentName]);
 
   useEffect(() => {
     const selectedVersion = getCurrentVersion();
     if (selectedVersion) {
       setEditorContent(selectedVersion.content);
+      
+      // If version has parent name metadata, update the current parent name
+      if (selectedVersion.metadata?.parent_name) {
+        setCurrentParentName(selectedVersion.metadata.parent_name);
+        
+        // Also update the parent name in the hook state
+        if (updateParentName) {
+          updateParentName(selectedVersion.metadata.parent_name);
+        }
+      }
     }
-  }, [currentVersionId, getCurrentVersion]);
+  }, [currentVersionId, getCurrentVersion, updateParentName]);
 
   useEffect(() => {
     if (sources && onSourcesUpdate && !currentAnswer?.isHistoricalAnswer) {
@@ -115,7 +168,7 @@ export const AnswerSection = ({
   useEffect(() => {
     const handleAnswer = async () => {
       if (question && 
-          typeof question === 'object' &&  // Change to handle object with parameters
+          typeof question === 'object' &&  
           question.question !== processedQuestionRef.current &&
           !currentAnswer?.isHistoricalAnswer) {
         
@@ -130,8 +183,13 @@ export const AnswerSection = ({
             source_data: selectedHistoryQuestion.source_data,
             response_metadata: selectedHistoryQuestion.response_metadata,
             question_id: selectedHistoryQuestion.id,
-            parameters: question.parameters
-          } : { parameters: question.parameters };
+            parameters: question.parameters,
+            parent_name: question.parentName || currentParentName // Include parent name in historical options
+          } : { 
+            parameters: question.parameters,
+            parent_name: question.parentName || currentParentName, // Include parent name in normal options
+            conversation_id: conversationId
+          };
 
           const response = await generateAnswerFromQuestion(question.question, options);
           
@@ -147,7 +205,8 @@ export const AnswerSection = ({
                 relationships: response.relationships || [],
                 metadata: response.metadata || {},
                 isHistoricalAnswer: options.isHistoricalAnswer,
-                parameters: question.parameters
+                parameters: question.parameters,
+                parent_name: response.parent_name || currentParentName // Include parent name in response
               });
             }
           }
@@ -159,7 +218,7 @@ export const AnswerSection = ({
     };
 
     handleAnswer();
-  }, [question, generateAnswerFromQuestion, onAnswerGenerated, currentAnswer, selectedHistoryQuestion]);
+  }, [question, generateAnswerFromQuestion, onAnswerGenerated, currentAnswer, selectedHistoryQuestion, currentParentName, conversationId]);
 
   const handleReset = useCallback(() => {
     setEditorContent(originalContent);
@@ -180,7 +239,11 @@ export const AnswerSection = ({
         }
         // Check if this exact content already exists in versions
         if (!versions.some(v => v.content === editorContent.trim())) {
-          addVersion(editorContent, 'user');
+          // Include parent name in version metadata
+          addVersion(editorContent, 'user', {
+            parent_name: currentParentName,
+            timestamp: new Date().toISOString()
+          });
           console.log('Version saved successfully');
         } else {
           console.log('Version with this content already exists');
@@ -189,17 +252,17 @@ export const AnswerSection = ({
         console.error('Failed to save version:', error);
       }
     }
-  }, [editorContent, addVersion, questionId, selectedHistoryQuestion, versions]);
+  }, [editorContent, addVersion, questionId, selectedHistoryQuestion, versions, currentParentName]);
 
-    // In your AnswerSection component
+  // In your AnswerSection component
   const handleCopy = (content) => {
     // Save a new version when copying
     addVersion(content, 'copy', {
       type: 'copy',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      parent_name: currentParentName // Include parent name in copied version
     });
   };
-
 
   const getPlainTextContent = useCallback((htmlContent) => {
     const tempDiv = document.createElement('div');
@@ -216,6 +279,14 @@ export const AnswerSection = ({
       <div className="flex-1 flex flex-col">
         <div className="flex-1 p-4 overflow-hidden flex flex-col">
           <h2 className="text-xl font-bold mb-4">VineAI Response</h2>
+          
+          {/* Display parent name if available */}
+          {currentParentName && (
+            <div className="mb-3 text-sm text-gray-600">
+              <span className="font-medium">Parent:</span> {currentParentName}
+            </div>
+          )}
+          
           <div className="flex-1 overflow-hidden">
             {loading || isGenerating ? (
               <div className="animate-pulse h-full bg-white rounded-lg border p-4">
@@ -244,6 +315,7 @@ export const AnswerSection = ({
           textToCopy={getPlainTextContent(editorContent)}
           metadata={metadata}
           onCopy={handleCopy}
+          parentName={currentParentName} // Pass parent name to ActionBar if needed
         />
         {showComparison && (
           <VersionComparison

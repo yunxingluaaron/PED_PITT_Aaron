@@ -6,13 +6,15 @@ export const generateAnswer = async ({
   message, 
   options = {}, 
   conversation_id = null, 
-  parameters = null 
+  parameters = null,
+  parent_name = null  // Add parent_name parameter
 }) => {
   console.log('🚀 generateAnswer called with:', { 
     message, 
     options, 
     conversation_id,
-    parameters 
+    parameters,
+    parent_name  // Log parent_name for debugging
   });
   
   // Handle historical questions
@@ -24,9 +26,11 @@ export const generateAnswer = async ({
       sources: options.source_data || [],
       metadata: {
         ...options.response_metadata,
-        parameters: parameters || options.parameters
+        parameters: parameters || options.parameters,
+        parent_name: parent_name || options.parent_name  // Include parent_name in metadata
       },
-      isHistoricalAnswer: true
+      isHistoricalAnswer: true,
+      parent_name: parent_name || options.parent_name  // Include parent_name in response
     };
   }
 
@@ -45,7 +49,8 @@ export const generateAnswer = async ({
         empathy: 'moderate',
         professionalStyle: 'clinicallyBalanced'
       },
-      response_type: 'text'
+      response_type: 'text',
+      parent_name: parent_name || null  // Add parent_name to the request
     };
 
     console.log('📤 Request data being sent:', JSON.stringify(requestData, null, 2));
@@ -64,13 +69,15 @@ export const generateAnswer = async ({
       if (!options.isHistoricalAnswer) {
         window.dispatchEvent(new CustomEvent('questionAdded', {
           detail: {
-            parameters: parameters
+            parameters: parameters,
+            parent_name: parent_name
           }
         }));
       }
       return {
         ...response.data,
-        parameters: parameters
+        parameters: parameters,
+        parent_name: parent_name || response.data.parent_name
       };
     }
   } catch (error) {

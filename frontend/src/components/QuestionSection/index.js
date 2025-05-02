@@ -7,12 +7,13 @@ const QuestionSection = ({
   onQuestionSubmit, 
   isGenerating,
   initialQuestion,
-  selectedHistoryQuestion
+  selectedHistoryQuestion,
+  initialParentName = '' // Add initialParentName prop with default empty string
 }) => {
   const [question, setQuestion] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
   const wasSetFromHistory = useRef(false);
-  const [parentName, setParentName] = useState('');
+  const [parentName, setParentName] = useState(initialParentName);
   
   const [dropdownValues, setDropdownValues] = useState({
     // Response Style dropdowns
@@ -28,7 +29,8 @@ const QuestionSection = ({
     initialQuestion,
     selectedHistoryQuestion,
     hasHistoryQuestion: !!selectedHistoryQuestion?.isFromHistory,
-    wasSetFromHistory: wasSetFromHistory.current
+    wasSetFromHistory: wasSetFromHistory.current,
+    initialParentName
   });
 
   // Track history question changes
@@ -36,6 +38,10 @@ const QuestionSection = ({
     console.log('🟡 selectedHistoryQuestion changed:', selectedHistoryQuestion);
     if (selectedHistoryQuestion?.isFromHistory) {
       wasSetFromHistory.current = true;
+      // If history question has parent_name, set it
+      if (selectedHistoryQuestion.parent_name) {
+        setParentName(selectedHistoryQuestion.parent_name);
+      }
     }
   }, [selectedHistoryQuestion]);
 
@@ -55,6 +61,14 @@ const QuestionSection = ({
       wasSetFromHistory.current = false;
     }
   }, [initialQuestion]);
+
+  // Handle initialParentName changes
+  useEffect(() => {
+    console.log('🟡 initialParentName changed:', initialParentName);
+    if (initialParentName !== parentName) {
+      setParentName(initialParentName);
+    }
+  }, [initialParentName]);
 
   // Handle loading state
   useEffect(() => {
@@ -85,7 +99,7 @@ const QuestionSection = ({
       await onQuestionSubmit({
         question: value,
         parameters: responseStyleParameters,
-        parentName: parentName // Add parentName to the submission
+        parentName: parentName // Send parentName to parent component
       });
     } catch (error) {
       console.error('Error submitting question:', error);
@@ -96,7 +110,7 @@ const QuestionSection = ({
   const handleClear = () => {
     console.log('🟡 Clearing question');
     setQuestion('');
-    setParentName('');
+    // Don't clear parentName when clearing the question
     wasSetFromHistory.current = false;
     if (selectedHistoryQuestion) {
       console.log('🟡 Resetting history state');
@@ -111,7 +125,8 @@ const QuestionSection = ({
       onQuestionSubmit({ 
         question: '',
         parameters: responseStyleParameters,
-        clearOnly: true
+        clearOnly: true,
+        parentName: parentName // Include parentName when clearing
       });
     }
   };

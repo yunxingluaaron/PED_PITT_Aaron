@@ -1,4 +1,3 @@
-##app\models.py
 # app/models.py
 from datetime import datetime
 from app.database import db
@@ -62,6 +61,7 @@ class Message(db.Model):
     response_metadata = db.Column(JSON)  # Changed from metadata to response_metadata
     source_data = db.Column(JSON)        # Changed from sources to source_data
     relationship_data = db.Column(JSON)   # Changed from relationships to relationship_data
+    parent_name = db.Column(db.String(255), nullable=True)  # Added parent_name field
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     message_type = db.Column(db.String(50), default='text')  # text, image, etc.
 
@@ -75,6 +75,7 @@ class Message(db.Model):
             'metadata': self.response_metadata,
             'sources': self.source_data,
             'relationships': self.relationship_data,
+            'parent_name': self.parent_name,  # Include parent_name in dict
             'created_at': self.created_at.isoformat(),
             'message_type': self.message_type
         }
@@ -87,18 +88,31 @@ class Question(db.Model):
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     conversation_id = db.Column(db.Integer, db.ForeignKey('conversations.id'))
+    parent_name = db.Column(db.String(255), nullable=True)  # Added parent_name field
     versions = db.relationship('VersionHistory', backref='question', lazy=True)
     is_archived = db.Column(db.Boolean, default=False)
 
+    def to_dict(self):
+        """Convert question object to dictionary."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'content': self.content,
+            'created_at': self.created_at.isoformat(),
+            'conversation_id': self.conversation_id,
+            'parent_name': self.parent_name,  # Include parent_name in dict
+            'is_archived': self.is_archived
+        }
 
 class VersionHistory(db.Model):
-    __tablename__ = 'version_history'  # Add this line
+    __tablename__ = 'version_history'
     
     id = db.Column(db.Integer, primary_key=True)
-    question_id = db.Column(db.Integer, db.ForeignKey('questions.id'), nullable=False)  # Changed to match the plural form
+    question_id = db.Column(db.Integer, db.ForeignKey('questions.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
     type = db.Column(db.String(50), nullable=False)  # 'user' or 'ai'
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    parent_name = db.Column(db.String(255), nullable=True)  # Added parent_name field
     is_liked = db.Column(db.Boolean, default=False)
     is_bookmarked = db.Column(db.Boolean, default=False)
 
@@ -109,6 +123,7 @@ class VersionHistory(db.Model):
             'content': self.content,
             'type': self.type,
             'timestamp': self.timestamp.isoformat(),
+            'parent_name': self.parent_name,  # Include parent_name in dict
             'is_liked': self.is_liked,
             'is_bookmarked': self.is_bookmarked,
         }

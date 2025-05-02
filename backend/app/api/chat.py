@@ -40,6 +40,14 @@ def submit_question():
             'professionalStyle': 'clinicallyBalanced'
         })
 
+        # Extract parent name from request
+        parent_name = data.get('parent_name', '')
+        logger.info(f"Parent name received: {parent_name}")
+
+        # Add parent_name to parameters if provided
+        if parent_name:
+            parameters['parent_name'] = parent_name
+
         logger.info(f"in the chat api, the tuning parameters is {parameters}")
 
         user = User.query.get(user_id)
@@ -73,7 +81,8 @@ def submit_question():
             new_question = Question(
                 user_id=user_id,
                 content=message,
-                conversation_id=conversation.id
+                conversation_id=conversation.id,
+                parent_name=parent_name  # Add parent name to the question
             )
             db.session.add(new_question)
             db.session.flush()
@@ -84,7 +93,7 @@ def submit_question():
                 analysis_results = es_querier.process_search_results(
                     results=hybrid_results,
                     query=message,
-                    parameters=parameters  # Pass parameters here
+                    parameters=parameters  # Pass parameters with parent_name
                 )
             except Exception as e:
                 logger.error(f"Search/Analysis error: {str(e)}", exc_info=True)
@@ -98,7 +107,8 @@ def submit_question():
                 response_metadata=analysis_results['metadata'],
                 source_data=analysis_results['sources'],
                 relationship_data=[rel for result in hybrid_results 
-                             for rel in result.get('relationships', [])]
+                             for rel in result.get('relationships', [])],
+                parent_name=parent_name  # Add parent name to the message
             )
             db.session.add(new_message)
 
@@ -107,7 +117,8 @@ def submit_question():
                 question_id=new_question.id,
                 content=message,
                 type='user',
-                timestamp=datetime.utcnow()
+                timestamp=datetime.utcnow(),
+                parent_name=parent_name  # Add parent name to user version
             )
             db.session.add(user_version)
 
@@ -115,7 +126,8 @@ def submit_question():
                 question_id=new_question.id,
                 content=analysis_results['analysis'],
                 type='ai',
-                timestamp=datetime.utcnow()
+                timestamp=datetime.utcnow(),
+                parent_name=parent_name  # Add parent name to AI version
             )
             db.session.add(ai_version)
 
@@ -132,7 +144,8 @@ def submit_question():
                                 for rel in result.get('relationships', [])],
                 'text_content': analysis_results['text_content'],
                 'ai_version_id': ai_version.id,
-                'user_version_id': user_version.id
+                'user_version_id': user_version.id,
+                'parent_name': parent_name  # Include parent name in response
             }
 
             return jsonify(response_data), 200
