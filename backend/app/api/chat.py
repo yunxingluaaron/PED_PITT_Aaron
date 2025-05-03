@@ -103,7 +103,7 @@ def submit_question():
             new_message = Message(
                 conversation_id=conversation.id,
                 content=message,
-                response=analysis_results['analysis'],
+                response=analysis_results['simple_analysis'],
                 response_metadata=analysis_results['metadata'],
                 source_data=analysis_results['sources'],
                 relationship_data=[rel for result in hybrid_results 
@@ -124,7 +124,7 @@ def submit_question():
 
             ai_version = VersionHistory(
                 question_id=new_question.id,
-                content=analysis_results['analysis'],
+                content=analysis_results['simple_analysis'],
                 type='ai',
                 timestamp=datetime.utcnow(),
                 parent_name=parent_name  # Add parent name to AI version
@@ -137,7 +137,7 @@ def submit_question():
             response_data = {
                 'conversation_id': conversation_id,
                 'question_id': new_question.id,
-                'detailed_response': analysis_results['analysis'],
+                'detailed_response': analysis_results['simple_analysis'],
                 'sources': analysis_results['sources'],
                 'metadata': analysis_results['metadata'],
                 'relationships': [rel for result in hybrid_results 
@@ -148,7 +148,7 @@ def submit_question():
                 'parent_name': parent_name  # Include parent name in response
             }
 
-            return jsonify(response_data), 200
+            return jsonify(response_data)
 
         except SQLAlchemyError as e:
             logger.error(f"Database error: {str(e)}", exc_info=True)

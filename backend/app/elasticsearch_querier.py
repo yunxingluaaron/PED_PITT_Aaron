@@ -1,10 +1,15 @@
 import json
-from elasticsearch import Elasticsearch
-from openai import OpenAI
-from dotenv import load_dotenv
 import os
 import logging
-from typing import List, Dict, Any
+import pickle
+import faiss
+import numpy as np
+import pandas as pd
+from typing import List, Dict, Any, Tuple
+from elasticsearch import Elasticsearch
+from openai import OpenAI
+from sentence_transformers import SentenceTransformer
+from app import real_conversation_analysis as rca
 
 # Set up logging
 logging.basicConfig(
@@ -13,12 +18,22 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Initialize the embedding model
+embedding_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+
 class ElasticsearchQuerier:
     def __init__(self,
                  es_host: str = 'localhost',
                  es_port: int = 9200,
                  index_name: str = 'ped_literature_3_files_01_01_2025'):
-        """Initialize Elasticsearch connection and OpenAI client."""
+        """
+        Initialize Elasticsearch connection, OpenAI client, and conversation data.
+        
+        Args:
+            es_host: Elasticsearch host
+            es_port: Elasticsearch port
+            index_name: Name of the Elasticsearch index
+        """
         try:
             self.es = Elasticsearch(
                 hosts=[f"http://{es_host}:{es_port}"],
@@ -26,18 +41,133 @@ class ElasticsearchQuerier:
             )
             if not self.es.ping():
                 raise ConnectionError("Could not connect to Elasticsearch")
-            
+                
             self.openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
             if not os.getenv("OPENAI_API_KEY"):
                 raise ValueError("OpenAI API key not found in environment variables")
-                
+                    
             self.index_name = index_name
             logger.info(f"Successfully initialized ElasticsearchQuerier with index: {index_name}")
-
-            self._initialize_style_templates()
             
+            # Initialize conversation data
+            self.conversation_data_loaded = False
+            self.df = None
+            self.question_embeddings = None
+            
+            # Initialize style templates if method exists
+            if hasattr(self, '_initialize_style_templates'):
+                self._initialize_style_templates()
+                
+            # Try to load data using predefined path
+            self._load_default_conversation_data()
+                
         except Exception as e:
             logger.error(f"Error initializing ElasticsearchQuerier: {str(e)}")
+            raise
+    
+    def _load_default_conversation_data(self):
+        """
+        Load conversation data from the default location in the project structure.
+        """
+        try:
+            # Determine data path based on project structure
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            data_path = os.path.join(base_dir, 'app', 'step2', 'recovered_utf8_for_excel.csv')
+            
+            if os.path.exists(data_path):
+                logger.info(f"Found default conversation data at {data_path}")
+                self.load_conversation_data(data_path)
+            else:
+                # Try alternative path if first one doesn't exist
+                alt_data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'step2', 'recovered_utf8_for_excel.csv')
+                if os.path.exists(alt_data_path):
+                    logger.info(f"Found default conversation data at alternative path {alt_data_path}")
+                    self.load_conversation_data(alt_data_path)
+                else:
+                    logger.warning(f"Default conversation data not found at {data_path} or {alt_data_path}")
+        except Exception as e:
+            logger.error(f"Error loading default conversation data: {str(e)}")
+    
+    def load_conversation_data(self, data_path: str):
+        """
+        Load conversation data and embeddings.
+        
+        Args:
+            data_path: Path to the CSV data file
+        """
+        if not os.path.exists(data_path):
+            logger.error(f"Data path does not exist: {data_path}")
+            self.conversation_data_loaded = False
+            return
+            
+        try:
+            logger.info(f"Loading conversation data from {data_path}")
+            self.df, self.question_embeddings = self._initialize_data(data_path)
+            self.conversation_data_loaded = True
+            logger.info(f"Successfully loaded conversation data: {len(self.df)} conversations")
+        except Exception as e:
+            logger.error(f"Error loading conversation data: {str(e)}")
+            self.conversation_data_loaded = False
+    
+    def _initialize_data(self, data_path: str):
+        """
+        Initialize data and embeddings.
+        
+        Args:
+            data_path: Path to the CSV data file
+            
+        Returns:
+            Tuple of (df, question_embeddings)
+        """
+        # Define paths for caching
+        embedding_path = os.path.join(os.path.dirname(data_path), 'embeddings.npy')
+        metadata_path = os.path.join(os.path.dirname(data_path), 'metadata.pkl')
+        
+        try:
+            # Load dataset
+            df = pd.read_csv(data_path, on_bad_lines='warn')
+            
+            # Clean data
+            df = df.dropna(subset=['department', 'ask', 'answer'])
+            df['department'] = df['department'].str.strip()
+            df['ask'] = df['ask'].str.strip()
+            df['answer'] = df['answer'].str.strip()
+            
+            # Define top departments if you still want to filter
+            top_departments = [
+                '内科', '耳鼻喉科', '营养保健科', '消化内科', '新生儿科',
+                '外科', '儿科急诊', '眼科', '骨科'
+            ]
+            
+            # Filter dataset
+            df = df[df['department'].isin(top_departments)]
+            
+            # Add index column
+            df['index'] = range(len(df))
+            
+            # Load or create embeddings
+            if os.path.exists(embedding_path) and os.path.exists(metadata_path):
+                logging.info(f"Loading precomputed embeddings from {embedding_path}")
+                question_embeddings = np.load(embedding_path)
+                with open(metadata_path, 'rb') as f:
+                    metadata = pickle.load(f)
+                df = pd.DataFrame(metadata)
+            else:
+                # Generate embeddings
+                logging.info("Generating embeddings for questions")
+                question_embeddings = embedding_model.encode(df['ask'].tolist(), show_progress_bar=True, batch_size=128)
+                
+                # Save embeddings and metadata
+                np.save(embedding_path, question_embeddings)
+                metadata = df.to_dict('records')
+                with open(metadata_path, 'wb') as f:
+                    pickle.dump(metadata, f)
+                logging.info(f"Saved embeddings to {embedding_path} and metadata to {metadata_path}")
+            
+            return df, question_embeddings
+        
+        except Exception as e:
+            logging.error(f"Error initializing data: {str(e)}")
             raise
 
     def get_embedding(self, text: str) -> list:
@@ -322,44 +452,22 @@ class ElasticsearchQuerier:
 
         return [base_system, style_system, format_system]   
     
-    # def create_chat_messages(self, query: str, formatted_text: str, parameters: dict) -> List[Dict[str, str]]:
-    #     """Create complete list of chat messages with improved structure."""
-    #     # Get system messages
-    #     messages = self._generate_system_messages(parameters)
-        
-    #     # Get parent name from parameters (default to "Susan" if not provided)
-    #     parent_name = parameters.get('parent_name', 'Susan')
-        
-    #     # Create user message with query and context
-    #     user_message = {
-    #         "role": "user",
-    #         "content": f"""You have a parent named {parent_name}, who is asking questions about: {query} regarding their child.
-
-    #         Below is the RELEVANT MEDICAL INFORMATION that you have discovered in relation to their query:
-    #         {formatted_text}
-
-    #         Now you will write a message to {parent_name}, ensuring it follows these communication requirements from the system prompts to demonstrate thorough care and professionalism as a pediatric doctor.
-
-    #         REQUIREMENTS:
-    # 0. Begin with **"Dear {parent_name},"** and write from the perspective of **Dr. Aaron Lu**, a pediatrician.
-    # 1. Maintain the specified communication style consistently throughout your response.
-    # 2. **Cite EVERY piece of medical information** using the format **(Source: [article name], Page [number]).**
-    # 3. If multiple sources support a statement, cite all relevant sources.
-    # 4. Present your response in **Markdown format**, using:
-    # - **Heading levels** (`#`, `##`, `###`) for main sections and sub-sections
-    # - **Line breaks** between paragraphs
-    # - **Bullet points** where appropriate
-    # 5. Use only the information from the provided sources. If information is not available, clearly state that.
-    # 6. Open your message with an **appropriate emotional acknowledgment** based on the specified empathy level.
-    # 7. Organize your response to progress logically from **acknowledgment → explanation → recommendations**.
-    # 8. End with a **closing** that reflects the specified tone and empathy level."""
-    #     }
-        
-    #     messages.append(user_message)
-    #     return messages
 
     def process_search_results(self, results: List[Dict], query: str, parameters: dict = None) -> Dict[str, Any]:
-        """Process search results with improved style control."""
+        """
+        Process search results with enhanced style control and conversation analysis.
+        
+        Args:
+            results: List of search results
+            query: The parent's query
+            parameters: Dictionary of style parameters
+            
+        Returns:
+            Dictionary with processed results including detailed and simplified analysis
+        """
+        # Import traceback for error logging
+        import traceback
+        
         # Default parameters
         parameters = parameters or {
             'tone': 'balanced',
@@ -394,7 +502,7 @@ class ElasticsearchQuerier:
             # Create structured chat messages
             # First make a copy of parameters without parent_name to avoid potential errors
             filtered_parameters = {k: v for k, v in parameters.items() 
-                                if k in ['tone', 'detailLevel', 'empathy', 'professionalStyle']}
+                            if k in ['tone', 'detailLevel', 'empathy', 'professionalStyle']}
             
             # Create messages using the filtered parameters
             messages = self._generate_system_messages(filtered_parameters)
@@ -435,13 +543,38 @@ class ElasticsearchQuerier:
                 temperature=temperature
             )
             
-            analysis = response.choices[0].message.content
+            detailed_analysis = response.choices[0].message.content
             
-            logger.info(f"Generated response with style parameters: {filtered_parameters}")
+            logger.info(f"Generated detailed response with style parameters: {filtered_parameters}")
+            
+            # Generate enhanced response using real conversation analysis if data is loaded
+            simple_analysis = None
+            if self.conversation_data_loaded:
+                logger.info("Conversation data is loaded. Attempting to retrieve similar conversations...")
+                try:
+
+                    logger.info("Generating response using rca.generate_response")
+                    
+                    simple_analysis = rca.generate_simple_analysis(
+                        query=query,
+                        detailed_response=detailed_analysis,
+                        language="neutral"  # Default to English
+                    )
+                    
+                    logger.info("Successfully generated response using real conversation analysis")
+                    
+                except Exception as e:
+                    logger.error(f"Error in real conversation analysis: {str(e)}")
+                    logger.error(f"Error traceback: {traceback.format_exc()}")
+                    simple_analysis = "Error generating simplified analysis based on real conversations."
+            else:
+                logger.warning("Conversation data not loaded. Skipping real conversation analysis.")
             
         except Exception as e:
             logger.error(f"Error in OpenAI analysis: {str(e)}")
-            analysis = "Error generating analysis. Please try again."
+            logger.error(f"Error traceback: {traceback.format_exc()}")
+            detailed_analysis = "Error generating analysis. Please try again."
+            simple_analysis = None
 
         # Include parent_name in metadata if it exists
         metadata = {
@@ -453,13 +586,18 @@ class ElasticsearchQuerier:
         if parent_name:
             metadata['parent_name'] = parent_name
 
-        return {
+        result = {
             'text_content': text_content,
             'sources': list(sources),
-            'analysis': analysis,
+            'analysis': detailed_analysis,
             'metadata': metadata
         }
-
+        
+        # Add simplified analysis if available
+        if simple_analysis:
+            result['simple_analysis'] = simple_analysis
+        logger.info(f"Generating the simple analysis is {simple_analysis}")
+        return result
 # Remove the create_chat_messages method since we're now handling it directly
 # in the process_search_results method to avoid potential issues
 
