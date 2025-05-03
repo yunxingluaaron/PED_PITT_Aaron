@@ -1,40 +1,64 @@
-// src/App.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/hooks/useAuth';
 import LoginPage from './components/auth/LoginPage';
 import SignupPage from './components/auth/SignupPage';
 import Sidebar from './components/Layout/Sidebar';
 import ResizablePanel from './components/Layout/ResizablePanel';
+import Splitter from './components/Layout/Splitter';
 import QuestionSection from './components/QuestionSection';
 import AnswerSection from './components/AnswerSection';
-import ReferenceSection from './components/ReferenceSection';
 
 const PrivateRoute = ({ children }) => {
   const { isLoggedIn } = useAuth();
   return isLoggedIn ? children : <Navigate to="/login" />;
 };
 
-
-// src/App.js - Updated DashboardLayout Component
 const DashboardLayout = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [currentAnswer, setCurrentAnswer] = useState(null);
-  const [sources, setSources] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedHistoryQuestion, setSelectedHistoryQuestion] = useState(null);
   const [currentQuestionId, setCurrentQuestionId] = useState(null);
-  const [parentName, setParentName] = useState(''); // Add state for parent name
+  const [parentName, setParentName] = useState('');
   const [dimensions, setDimensions] = useState({
-    questions: { width: 1200, height: 400 },
-    answers: { width: 1200, height: 400 },
-    reference: { width: 300, height: 600 }
+    questions: { width: 400, height: 800 },
+    answers: { width: 400, height: 800 },
   });
+  const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 768);
+  const sidebarRef = useRef(null);
+
+  // 动态计算可用宽度并更新 dimensions
+  useEffect(() => {
+    const updateDimensions = () => {
+      const sidebarWidth = sidebarRef.current
+        ? sidebarRef.current.offsetWidth
+        : isCollapsed
+        ? 60
+        : 200;
+      const availableWidth = window.innerWidth - sidebarWidth - 40;
+      // 确保 questions.width 不超过可用宽度的 70%，留给 answers 足够空间
+      const questionWidth = Math.min(dimensions.questions.width, availableWidth * 0.7);
+      const answerWidth = availableWidth - questionWidth - 2; // 减去 Splitter 宽度 (2px)
+      setDimensions((prev) => ({
+        questions: { width: questionWidth, height: window.innerHeight - 100 },
+        answers: { width: answerWidth, height: window.innerHeight - 100 },
+      }));
+      setIsSmallScreen(window.innerWidth < 768);
+      if (window.innerWidth < 768) {
+        setIsCollapsed(true);
+      }
+    };
+
+    window.addEventListener('resize', updateDimensions);
+    updateDimensions();
+
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, [isCollapsed, dimensions.questions.width]);
 
   useEffect(() => {
     console.log('🔄 selectedHistoryQuestion changed:', selectedHistoryQuestion);
-    // If selecting a history question, also set its parent name if available
     if (selectedHistoryQuestion?.parent_name) {
       setParentName(selectedHistoryQuestion.parent_name);
     }
@@ -50,79 +74,73 @@ const DashboardLayout = () => {
 
   const handleQuestionSelect = (question) => {
     console.log('🔵 handleQuestionSelect called with:', question);
-    
     if (question.isFromHistory) {
       console.log('🔵 Processing historical question');
       setCurrentAnswer({
         id: question.id,
         conversation_id: question.conversation_id,
         detailed_response: question.response,
-        sources: question.source_data || [],
         metadata: question.response_metadata || {},
         isHistoricalAnswer: true,
-        parent_name: question.parent_name // Include parent name in current answer
+        parent_name: question.parent_name,
       });
-      setSources(question.source_data || []);
       setCurrentQuestion(question.content);
       setSelectedHistoryQuestion(question);
       setCurrentQuestionId(question.id);
-      // Set parent name if available in the history question
       if (question.parent_name) {
         setParentName(question.parent_name);
       }
       setIsGenerating(false);
     }
   };
-  
+
   const handleQuestionSubmit = async (questionData) => {
     console.log('🔵 handleQuestionSubmit called:', {
       questionData,
       isHistorical: selectedHistoryQuestion?.isFromHistory,
-      parentName: questionData.parentName // Log the parent name
+      parentName: questionData.parentName,
     });
-  
-    // Store parent name in state
+
     if (questionData.parentName !== undefined) {
       setParentName(questionData.parentName);
     }
 
-    // Add check for clearOnly flag
     if (questionData.clearOnly) {
       setSelectedHistoryQuestion(null);
       setCurrentAnswer(null);
       setCurrentQuestionId(null);
-      // Only clear parent name if explicitly told to
       if (questionData.clearParentName) {
         setParentName('');
       }
       return;
     }
-  
-    if (selectedHistoryQuestion?.isFromHistory && 
-        questionData.question === selectedHistoryQuestion.content) {
+
+    if (
+      selectedHistoryQuestion?.isFromHistory &&
+      questionData.question === selectedHistoryQuestion.content
+    ) {
       console.log('🔵 Skipping submission for historical question');
       return;
     }
-  
+
     try {
       setIsGenerating(true);
       setCurrentQuestion(questionData.question);
       setSelectedHistoryQuestion(null);
       setCurrentAnswer(null);
       setCurrentQuestionId(null);
-  
-      // Pass the question and parent name to AnswerSection
+
       const answerSection = document.getElementById('answer-section');
       if (answerSection) {
-        // Include parent name in the event
         const enhancedQuestionData = {
           ...questionData,
-          parentName: questionData.parentName || parentName // Use provided or stored parent name
+          parentName: questionData.parentName || parentName,
         };
-        
-        answerSection.dispatchEvent(new CustomEvent('newQuestion', {
-          detail: enhancedQuestionData
-        }));
+        answerSection.dispatchEvent(
+          new CustomEvent('newQuestion', {
+            detail: enhancedQuestionData,
+          })
+        );
       }
     } catch (error) {
       console.error('Error submitting question:', error);
@@ -134,22 +152,14 @@ const DashboardLayout = () => {
     if (!answer.isHistoricalAnswer) {
       setCurrentAnswer(answer);
       setIsGenerating(false);
-      if (answer && answer.sources) {
-        setSources(answer.sources);
-      }
       if (answer.id) {
         setCurrentQuestionId(answer.id);
       }
-      // If the answer includes a parent name, update the state
       if (answer.parent_name) {
         setParentName(answer.parent_name);
       }
       window.dispatchEvent(new Event('questionAdded'));
     }
-  };
-
-  const handleSourcesUpdate = (newSources) => {
-    setSources(newSources);
   };
 
   const handleGenerationError = () => {
@@ -161,87 +171,113 @@ const DashboardLayout = () => {
   };
 
   const handleResize = (section) => (e, { size }) => {
-    setDimensions(prev => ({
+    console.log(`🔄 Resizing ${section}:`, size);
+    setDimensions((prev) => ({
       ...prev,
-      [section]: { width: size.width, height: size.height }
+      [section]: { width: prev[section].width, height: size.height },
     }));
   };
 
+  const handleSplitterDrag = (newPosition) => {
+    const sidebarWidth = sidebarRef.current
+      ? sidebarRef.current.offsetWidth
+      : isCollapsed
+      ? 60
+      : 200;
+    const availableWidth = window.innerWidth - sidebarWidth - 40;
+    const questionWidth = newPosition;
+    const answerWidth = availableWidth - questionWidth - 2; // 减去 Splitter 宽度 (2px)
+    setDimensions({
+      questions: { width: questionWidth, height: dimensions.questions.height },
+      answers: { width: answerWidth, height: dimensions.answers.height },
+    });
+  };
+
+  const getSplitterConstraints = () => {
+    const sidebarWidth = sidebarRef.current
+      ? sidebarRef.current.offsetWidth
+      : isCollapsed
+      ? 60
+      : 200;
+    const availableWidth = window.innerWidth - sidebarWidth - 40;
+    return {
+      minPosition: 300, // 最小宽度 300px
+      maxPosition: availableWidth - 300, // 确保 Answer 面板最小宽度 300px
+    };
+  };
+
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      <Sidebar 
-        isCollapsed={isCollapsed} 
-        toggleSidebar={toggleSidebar}
-        onQuestionSelect={handleQuestionSelect}
-      />
-      
-      <div className="flex-1 flex">
-        <div className="flex-1 p-4 flex flex-col relative">
-          <div className="mb-6">
-            <ResizablePanel
-              width={dimensions.questions.width}
-              height={dimensions.questions.height}
-              onResize={handleResize('questions')}
-              minConstraints={[400, 150]}
-              maxConstraints={[1200, 800]}
-              resizeHandles={['s']}
-            >
-              <div className="p-4 h-full">
-                <QuestionSection 
-                  onQuestionSubmit={handleQuestionSubmit}
-                  isGenerating={isGenerating}
-                  initialQuestion={selectedHistoryQuestion?.content}
-                  selectedHistoryQuestion={selectedHistoryQuestion}
-                  initialParentName={parentName} // Pass parent name to QuestionSection
-                />
-              </div>
-            </ResizablePanel>
-          </div>
-  
-          <div className="flex-1">
-            <ResizablePanel
-              width={dimensions.answers.width}
-              height={dimensions.answers.height}
-              onResize={handleResize('answers')}
-              minConstraints={[400, 400]}
-              maxConstraints={[1200, 800]}
-              resizeHandles={['s']}
-            >
-              <div className="p-4 h-full overflow-auto">
-                <AnswerSection 
-                  question={currentQuestion}
-                  questionId={currentQuestionId}
-                  onAnswerGenerated={handleAnswerGenerated}
-                  onSourcesUpdate={handleSourcesUpdate}
-                  onError={handleGenerationError}
-                  isGenerating={isGenerating}
-                  selectedHistoryQuestion={selectedHistoryQuestion}
-                  currentAnswer={currentAnswer}
-                  parentName={parentName} // Pass parent name to AnswerSection
-                />
-              </div>
-            </ResizablePanel>
-          </div>
+    <div className="flex min-h-screen overflow-hidden bg-gray-50">
+      <div ref={sidebarRef}>
+        <Sidebar
+          isCollapsed={isCollapsed}
+          toggleSidebar={toggleSidebar}
+          onQuestionSelect={handleQuestionSelect}
+        />
+      </div>
+
+      <div
+        className={`flex-1 flex p-4 ${
+          isSmallScreen ? 'flex-col' : 'flex-row'
+        } max-w-full`}
+      >
+        <div className={`flex-none ${isSmallScreen ? 'mb-4' : ''}`}>
+          <ResizablePanel
+            width={dimensions.questions.width}
+            height={dimensions.questions.height}
+            onResize={handleResize('questions')}
+            minConstraints={[isSmallScreen ? 200 : 300, 400]}
+            maxConstraints={[isSmallScreen ? window.innerWidth - 40 : 800, window.innerHeight - 100]}
+            resizeHandles={['s']}
+          >
+            <div className="p-4 h-full overflow-auto">
+              <QuestionSection
+                onQuestionSubmit={handleQuestionSubmit}
+                isGenerating={isGenerating}
+                initialQuestion={selectedHistoryQuestion?.content}
+                selectedHistoryQuestion={selectedHistoryQuestion}
+                initialParentName={parentName}
+              />
+            </div>
+          </ResizablePanel>
         </div>
-  
-        <ResizablePanel
-          width={dimensions.reference.width}
-          height={dimensions.reference.height}
-          onResize={handleResize('reference')}
-          minConstraints={[200, 400]}
-          maxConstraints={[500, 1000]}
-          resizeHandles={['w']}
-          className="border-l border-gray-200 bg-white"
-        >
-          <div className="p-4 h-full overflow-auto">
-            <ReferenceSection sources={sources} />
-          </div>
-        </ResizablePanel>
+
+        {!isSmallScreen && (
+          <Splitter
+            onDrag={handleSplitterDrag}
+            initialPosition={dimensions.questions.width}
+            {...getSplitterConstraints()}
+          />
+        )}
+
+        <div className={`flex-none ${isSmallScreen ? '' : ''}`}>
+          <ResizablePanel
+            width={dimensions.answers.width}
+            height={dimensions.answers.height}
+            onResize={handleResize('answers')}
+            minConstraints={[isSmallScreen ? 200 : 300, 400]}
+            maxConstraints={[isSmallScreen ? window.innerWidth - 40 : 800, window.innerHeight - 100]}
+            resizeHandles={['s']}
+            className="ml-auto"
+          >
+            <div className="p-4 h-full overflow-auto">
+              <AnswerSection
+                question={currentQuestion}
+                questionId={currentQuestionId}
+                onAnswerGenerated={handleAnswerGenerated}
+                onError={handleGenerationError}
+                isGenerating={isGenerating}
+                selectedHistoryQuestion={selectedHistoryQuestion}
+                currentAnswer={currentAnswer}
+                parentName={parentName}
+              />
+            </div>
+          </ResizablePanel>
+        </div>
       </div>
     </div>
   );
 };
-
 
 const App = () => {
   const { isLoggedIn } = useAuth();
@@ -249,13 +285,13 @@ const App = () => {
   return (
     <Router>
       <Routes>
-        <Route 
-          path="/login" 
-          element={isLoggedIn ? <Navigate to="/dashboard" /> : <LoginPage />} 
+        <Route
+          path="/login"
+          element={isLoggedIn ? <Navigate to="/dashboard" /> : <LoginPage />}
         />
-        <Route 
-          path="/signup" 
-          element={isLoggedIn ? <Navigate to="/dashboard" /> : <SignupPage />} 
+        <Route
+          path="/signup"
+          element={isLoggedIn ? <Navigate to="/dashboard" /> : <SignupPage />}
         />
         <Route
           path="/dashboard"
