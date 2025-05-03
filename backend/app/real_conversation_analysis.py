@@ -927,7 +927,8 @@ def analyze_query_complexity_with_llm(query: str, language: str = "neutral") -> 
         logging.error(f"Error calling LLM API for query analysis: {str(e)}")
         return default_results
 
-def generate_response(query: str, textbook_info: str, examples: List[Tuple[str, str]], language: str = "neutral") -> str:
+def generate_response(query: str, textbook_info: str, examples: List[Tuple[str, str]], 
+                     language: str = "neutral", parent_name: str = "") -> str:
     """
     Generate a pediatrician's response to a parent's query using enhanced LLM-driven analysis,
     incorporating a flowchart to guide questioning strategy. The final response is always in English.
@@ -1066,7 +1067,7 @@ def generate_response(query: str, textbook_info: str, examples: List[Tuple[str, 
     
     # Step 6: Create enhanced prompt with style patterns, knowledge gaps, and flowchart
     prompt = (
-        f"You are an experienced pediatrician answering a parent's question. "
+        f"You are an experienced pediatrician answering a parent's question. Address the parent as '{parent_name}' if provided, otherwise just directly with reply message"
 
         f"Your tone is {example_tone}, like a trusted doctor who is clear and supportive.\n\n"
         
@@ -1133,67 +1134,6 @@ def generate_response(query: str, textbook_info: str, examples: List[Tuple[str, 
     except Exception as e:
         logging.error(f"Language model error: {e}")
         return "Sorry, I can't generate a response right now. Please try again later."
-
-# Function to generate a simpler, parent-friendly version of the response
-def generate_simple_analysis(query: str, detailed_response: str, language: str = "neutral") -> str:
-    """
-    Generate a simpler, parent-friendly version of the detailed medical response.
-    
-    Args:
-        query: The parent's original question
-        detailed_response: The detailed medical response
-        language: Language for the response ('neutral' for English, 'zh' for Chinese)
-        
-    Returns:
-        A simplified version of the response in English
-    """
-    try:
-        client = OpenAI(
-            api_key=os.environ.get("XAI_API_KEY", "your_default_key_here"),
-            base_url="https://api.x.ai/v1",
-        )
-        
-        system_prompt = """
-        You are a pediatrician who specializes in explaining complex medical information to parents in simple terms.
-        Your task is to create a simplified, more approachable version of a detailed medical response.
-        
-        Guidelines:
-        1. Simplify any medical jargon - use everyday language parents will understand
-        2. Shorten the response to about 40-60% of the original length
-        3. Maintain all crucial medical advice and key points
-        4. Use bullet points for any action items or recommendations
-        5. Keep a warm, reassuring tone
-        6. Focus on the most immediately relevant information to the parent's concern
-        
-        Your simplified version should be easier to understand but still medically accurate.
-        """
-        
-        user_prompt = f"""
-        Parent's Question: {query}
-        
-        Detailed Medical Response: 
-        {detailed_response}
-        
-        Please create a simplified, parent-friendly version of this response in English.
-        """
-        
-        logging.info("Calling API to generate simplified response")
-        completion = client.chat.completions.create(
-            model="grok-3-latest",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.3,
-        )
-        
-        simplified_response = completion.choices[0].message.content
-        logging.info("Generated simplified response")
-        return simplified_response
-        
-    except Exception as e:
-        logging.error(f"Error generating simplified response: {str(e)}")
-        return "Sorry, I couldn't generate a simplified version of the response. Please see the detailed explanation above."
 
 
 # Export the main functions for external use

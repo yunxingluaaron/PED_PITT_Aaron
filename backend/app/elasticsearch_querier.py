@@ -553,11 +553,12 @@ class ElasticsearchQuerier:
                     
                     logger.info("Generating response using rca.generate_response")
                     simple_analysis = rca.generate_response(
-                        query=query,
-                        textbook_info=detailed_analysis,
-                        examples=conversation_examples,
-                        language="neutral"
-                    )
+                                        query=query,
+                                        textbook_info=detailed_analysis,
+                                        examples=conversation_examples,
+                                        language="neutral",
+                                        parent_name=parent_name  # Pass parent_name
+                                    )
                     
                     logger.info("Successfully generated response using real conversation analysis")
                     
