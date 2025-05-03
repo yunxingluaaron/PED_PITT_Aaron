@@ -1,3 +1,5 @@
+## app\elasticsearch_querier.py
+
 import json
 import os
 import logging
@@ -465,24 +467,19 @@ class ElasticsearchQuerier:
         Returns:
             Dictionary with processed results including detailed and simplified analysis
         """
-        # Import traceback for error logging
         import traceback
         
-        # Default parameters
         parameters = parameters or {
             'tone': 'balanced',
             'detailLevel': 'moderate',
             'empathy': 'moderate',
             'professionalStyle': 'clinicallyBalanced'
         }
-
-        # Extract parent_name if present, defaulting to empty string if not found
         parent_name = parameters.get('parent_name', '')
         
         logger.info(f"Processing search with parameters: {parameters}")
         logger.info(f"Parent name for response: {parent_name}")
 
-        # Process search results
         text_content = []
         sources = set()
         for result in results:
@@ -499,42 +496,35 @@ class ElasticsearchQuerier:
         ])
 
         try:
-            # Create structured chat messages
-            # First make a copy of parameters without parent_name to avoid potential errors
             filtered_parameters = {k: v for k, v in parameters.items() 
-                            if k in ['tone', 'detailLevel', 'empathy', 'professionalStyle']}
-            
-            # Create messages using the filtered parameters
+                                if k in ['tone', 'detailLevel', 'empathy', 'professionalStyle']}
             messages = self._generate_system_messages(filtered_parameters)
             
-            # Add user message with the parent name
             user_message = {
                 "role": "user",
                 "content": f"""You have a parent named {parent_name}, who is asking questions about: {query} regarding their child.
 
-                Below is the RELEVANT MEDICAL INFORMATION that you have discovered in relation to their query:
-                {formatted_text}
+                    Below is the RELEVANT MEDICAL INFORMATION that you have discovered in relation to their query:
+                    {formatted_text}
 
-                Now you will write a message to {parent_name}, ensuring it follows these communication requirements from the system prompts to demonstrate thorough care and professionalism as a pediatric doctor.
+                    Now you will write a message to {parent_name}, ensuring it follows these communication requirements from the system prompts to demonstrate thorough care and professionalism as a pediatric doctor.
 
-                REQUIREMENTS:
-    0. Begin with **"Dear {parent_name},"** and write from the perspective of **Dr. Aaron Lu**, a pediatrician.
-    1. Maintain the specified communication style consistently throughout your response.
-    2. **Cite EVERY piece of medical information** using the format **(Source: [article name], Page [number]).**
-    3. If multiple sources support a statement, cite all relevant sources.
-    4. Present your response in **Markdown format**, using:
-    - **Heading levels** (`#`, `##`, `###`) for main sections and sub-sections
-    - **Line breaks** between paragraphs
-    - **Bullet points** where appropriate
-    5. Use only the information from the provided sources. If information is not available, clearly state that.
-    6. Open your message with an **appropriate emotional acknowledgment** based on the specified empathy level.
-    7. Organize your response to progress logically from **acknowledgment → explanation → recommendations**.
-    8. End with a **closing** that reflects the specified tone and empathy level."""
+                    REQUIREMENTS:
+        0. Begin with **"Dear {parent_name},"** and write from the perspective of **Dr. Aaron Lu**, a pediatrician.
+        1. Maintain the specified communication style consistently throughout your response.
+        2. **Cite EVERY piece of medical information** using the format **(Source: [article name], Page [number]).**
+        3. If multiple sources support a statement, cite all relevant sources.
+        4. Present your response in **Markdown format**, using:
+        - **Heading levels** (`#`, `##`, `###`) for main sections and sub-sections
+        - **Line breaks** between paragraphs
+        - **Bullet points** where appropriate
+        5. Use only the information from the provided sources. If information is not available, clearly state that.
+        6. Open your message with an **appropriate emotional acknowledgment** based on the specified empathy level.
+        7. Organize your response to progress logically from **acknowledgment → explanation → recommendations**.
+        8. End with a **closing** that reflects the specified tone and empathy level."""
             }
             
             messages.append(user_message)
-
-            # Adjust temperature based on style needs
             temperature = 0.3
 
             response = self.openai_client.chat.completions.create(
@@ -544,21 +534,29 @@ class ElasticsearchQuerier:
             )
             
             detailed_analysis = response.choices[0].message.content
-            
             logger.info(f"Generated detailed response with style parameters: {filtered_parameters}")
             
-            # Generate enhanced response using real conversation analysis if data is loaded
             simple_analysis = None
             if self.conversation_data_loaded:
                 logger.info("Conversation data is loaded. Attempting to retrieve similar conversations...")
                 try:
-
-                    logger.info("Generating response using rca.generate_response")
-                    
-                    simple_analysis = rca.generate_simple_analysis(
+                    # Pass df and question_embeddings explicitly
+                    conversation_examples = rca.retrieve_conversations(
                         query=query,
-                        detailed_response=detailed_analysis,
-                        language="neutral"  # Default to English
+                        df=self.df,
+                        question_embeddings=self.question_embeddings,
+                        top_k=5,
+                        final_k=3
+                    )
+                    
+                    logger.info(f"Retrieved {len(conversation_examples)} conversation examples")
+                    
+                    logger.info("Generating response using rca.generate_response")
+                    simple_analysis = rca.generate_response(
+                        query=query,
+                        textbook_info=detailed_analysis,
+                        examples=conversation_examples,
+                        language="neutral"
                     )
                     
                     logger.info("Successfully generated response using real conversation analysis")
@@ -576,7 +574,6 @@ class ElasticsearchQuerier:
             detailed_analysis = "Error generating analysis. Please try again."
             simple_analysis = None
 
-        # Include parent_name in metadata if it exists
         metadata = {
             'num_results': len(results),
             'num_sources': len(sources),
@@ -593,10 +590,9 @@ class ElasticsearchQuerier:
             'metadata': metadata
         }
         
-        # Add simplified analysis if available
         if simple_analysis:
             result['simple_analysis'] = simple_analysis
-        logger.info(f"Generating the simple analysis is {simple_analysis}")
+        logger.info(f"Generated simple analysis: {simple_analysis}")
         return result
 # Remove the create_chat_messages method since we're now handling it directly
 # in the process_search_results method to avoid potential issues

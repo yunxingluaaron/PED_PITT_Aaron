@@ -16,8 +16,11 @@ import pickle
 from sklearn.cluster import KMeans
 from collections import Counter
 
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -32,8 +35,8 @@ faiss_index_path = './step2/faiss_index.bin'
 
 # REUSED FUNCTIONS FROM ORIGINAL CODE
 
-def retrieve_conversations(self, query: str, df: pd.DataFrame = None, question_embeddings: np.ndarray = None, 
-                            top_k: int = 5, final_k: int = 3) -> List[Tuple[str, str]]:
+def retrieve_conversations(query: str, df: pd.DataFrame, question_embeddings: np.ndarray, 
+                          top_k: int = 5, final_k: int = 3) -> List[Tuple[str, str]]:
     """
     Retrieve top conversation examples for a query using FAISS to search all conversations.
     
@@ -46,22 +49,16 @@ def retrieve_conversations(self, query: str, df: pd.DataFrame = None, question_e
     
     Returns:
         List of (question, answer) tuples
-
     """
-
-            # Use instance variables if parameters not provided
-    df = df if df is not None else self.df
-    question_embeddings = question_embeddings if question_embeddings is not None else self.question_embeddings
-    
     # Check if data is loaded
     if df is None or question_embeddings is None:
-        logger.error("Conversation data not loaded. Cannot retrieve conversations.")
+        logger.error("Conversation data not provided. Cannot retrieve conversations.")
         return []
     
     # Generate query embedding
     query_emb = embedding_model.encode([query])[0]
     query_emb = query_emb / np.linalg.norm(query_emb)  # Normalize
-    logging.info(f"Generated query embedding for: {query}")
+    logger.info(f"Generated query embedding for: {query}")
     
     # Search with Faiss across all embeddings
     dimension = question_embeddings.shape[1]
@@ -83,7 +80,7 @@ def retrieve_conversations(self, query: str, df: pd.DataFrame = None, question_e
         answer = df.iloc[global_idx]['answer']
         print(f"Candidate {idx+1}: Index={global_idx}, Question={question}")
         candidates.append((question, answer, global_idx))  # Store index with tuple
-    logging.info(f"Retrieved {len(candidates)} candidates")
+    logger.info(f"Retrieved {len(candidates)} candidates")
     
     # Apply diversity (MMR approximation)
     selected = []
@@ -120,7 +117,7 @@ def retrieve_conversations(self, query: str, df: pd.DataFrame = None, question_e
     for i, (question, _, global_idx) in enumerate(selected):
         print(f"Selected {i+1}: Index={global_idx}, Question={question}")
     
-    logging.info(f"Retrieved {len(selected)} diverse examples")
+    logger.info(f"Retrieved {len(selected)} diverse examples")
     
     # Return only (question, answer) tuples
     return [(question, answer) for question, answer, _ in selected[:final_k]]
