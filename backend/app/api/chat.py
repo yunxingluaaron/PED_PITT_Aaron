@@ -182,11 +182,13 @@ def get_conversation(conversation_id):
         
         messages_data = [{
             'content': msg.content,
-            'response': msg.response,
-            'metadata': msg.metadata,
-            'sources': msg.sources,
-            'relationships': msg.relationships,
-            'created_at': msg.created_at.isoformat()
+            'simple_response': msg.response,  # 映射为 simple_response
+            'detailed_response': msg.detailed_response,  # 添加 detailed_response
+            'metadata': msg.response_metadata,  # 修正字段名
+            'sources': msg.source_data,  # 修正字段名
+            'relationships': msg.relationship_data,  # 修正字段名
+            'created_at': msg.created_at.isoformat(),
+            'parent_name': msg.parent_name  # 如果需要，也返回 parent_name
         } for msg in messages]
         
         return jsonify({

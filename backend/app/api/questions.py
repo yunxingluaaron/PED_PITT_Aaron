@@ -57,52 +57,37 @@ def get_questions():
 @api.route('/questions/<int:question_id>', methods=['GET'])
 @jwt_required()
 def get_question_details(question_id):
-    logger.info(f"🔍 Getting question details for ID: {question_id}")
     try:
         user_id = get_jwt_identity()
+        logger.info(f"🔍 Getting question details for ID: {question_id}")
         logger.info(f"👤 User ID: {user_id}")
-        
-        # Join with Message to get the response data
-        question = Question.query.filter_by(
-            id=question_id,
-            user_id=user_id
-        ).first()
-        
+
+        question = Question.query.filter_by(id=question_id, user_id=user_id).first()
         if not question:
-            logger.warning(f"❌ Question not found for ID: {question_id}")
+            logger.warning(f"Question not found: {question_id}")
             return jsonify({'error': 'Question not found'}), 404
-            
+        
         logger.info(f"📝 Found question: {question.content}")
-        
-        # Get the associated message for this question
-        message = Message.query.filter_by(
-            conversation_id=question.conversation_id,
-            content=question.content
-        ).first()
-        
+
+        message = Message.query.filter_by(conversation_id=question.conversation_id).order_by(Message.created_at.desc()).first()
         if not message:
-            logger.warning(f"❌ Message not found for question ID: {question_id}")
-            return jsonify({'error': 'Message not found'}), 404
-            
-        logger.info(f"💬 Found associated message with response length: {len(str(message.response)) if message.response else 0}")
-        
-        question_data = {
-            'id': question.id,
-            'content': question.content,
-            'created_at': question.created_at.isoformat(),
-            'conversation_id': question.conversation_id,
-            'response': message.response,
-            'source_data': message.source_data,
-            'response_metadata': message.response_metadata
-        }
-        
+            logger.warning(f"No message found for question: {question_id}")
+            return jsonify({'error': 'No message found for this question'}), 404
+
+        logger.info(f"💬 Found associated message with response length: {len(message.response or '')}")
+
+        question_data = question.to_dict()
+        question_data['response'] = message.response  # simple_response
+        question_data['detailed_response'] = message.detailed_response  # detailed_response
+        question_data['source_data'] = message.source_data
+        question_data['response_metadata'] = message.response_metadata
+
         logger.info(f"📦 Returning question data with fields: {list(question_data.keys())}")
         logger.debug(f"📦 Full question data: {question_data}")
-        
-        return jsonify(question_data), 200
-        
+
+        return jsonify(question_data)
     except Exception as e:
-        logger.error(f"💥 Error in get_question_details: {str(e)}", exc_info=True)
+        logger.error(f"Error in get_question_details: {str(e)}", exc_info=True)
         return jsonify({'error': 'Internal server error'}), 500
 
 

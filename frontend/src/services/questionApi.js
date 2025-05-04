@@ -125,11 +125,21 @@ export const getConversationHistory = async (conversation_id) => {
   try {
     const response = await axios.get(`${API_BASE_URL}/conversations/${conversation_id}`, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`  // 修正 token 来源
       }
     });
 
-    return response.data;
+    // 确保 messages 中的字段名一致
+    const messages = response.data.messages.map(msg => ({
+      ...msg,
+      simple_response: msg.simple_response,  // 已经正确映射
+      detailed_response: msg.detailed_response || msg.simple_response  // 回退到 simple_response
+    }));
+
+    return {
+      ...response.data,
+      messages
+    };
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to fetch conversation history');
   }
