@@ -17,13 +17,13 @@ export const generateAnswer = async ({
     parent_name
   });
   
-  // Handle historical questions
   if (options.isHistoricalAnswer) {
     console.log('📜 Using historical answer, skipping API call');
     return {
       conversation_id: options.conversation_id,
-      detailed_response: options.response,
-      simple_response: options.simple_response || options.response, // 新增：支持历史答案的 simple_response
+      detailed_response: options.detailed_response || 'Detailed response not available',
+      simple_response: options.simple_response || options.response || 'Simplified response not available',
+      response: options.simple_response || options.response || 'Simplified response not available',
       sources: options.source_data || [],
       metadata: {
         ...options.response_metadata,
@@ -101,7 +101,6 @@ export const generateAnswer = async ({
   }
 };
 
-// 其余函数保持不变
 export const getQuestionHistory = async () => {
   console.log('🔴 getQuestionHistory called');
   const token = localStorage.getItem('auth_token');
@@ -125,15 +124,14 @@ export const getConversationHistory = async (conversation_id) => {
   try {
     const response = await axios.get(`${API_BASE_URL}/conversations/${conversation_id}`, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`  // 修正 token 来源
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
       }
     });
 
-    // 确保 messages 中的字段名一致
     const messages = response.data.messages.map(msg => ({
       ...msg,
-      simple_response: msg.simple_response,  // 已经正确映射
-      detailed_response: msg.detailed_response || msg.simple_response  // 回退到 simple_response
+      simple_response: msg.simple_response || msg.response || 'Simplified response not available',
+      detailed_response: msg.detailed_response || 'Detailed response not available'
     }));
 
     return {
@@ -185,7 +183,12 @@ export const getQuestionDetails = async (questionId) => {
       }
     });
     console.log('📦 Received question details:', response.data);
-    return response.data;
+    return {
+      ...response.data,
+      simple_response: response.data.simple_response || response.data.response || 'Simplified response not available',
+      detailed_response: response.data.detailed_response || 'Detailed response not available',
+      response: response.data.simple_response || response.data.response || 'Simplified response not available'
+    };
   } catch (error) {
     console.error('💥 Failed to fetch question details:', error);
     throw error;

@@ -1,4 +1,3 @@
-// src/components/Layout/Sidebar.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -29,9 +28,24 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
     try {
       setLoading(true);
       const data = await getQuestionHistory();
-      setQuestions(data.sort((a, b) => 
-        new Date(b.created_at) - new Date(a.created_at)
-      ));
+      const enrichedData = await Promise.all(
+        data.map(async (question) => {
+          try {
+            const details = await getQuestionDetails(question.id);
+            return {
+              ...question,
+              simple_response: details.simple_response || question.response || 'Simplified response not available',
+              detailed_response: details.detailed_response || 'Detailed response not available'
+            };
+          } catch (error) {
+            console.error(`Failed to fetch details for question ${question.id}:`, error);
+            return question;
+          }
+        })
+      );
+      setQuestions(
+        enrichedData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      );
     } catch (error) {
       console.error('Failed to load question history:', error);
     } finally {
@@ -43,7 +57,6 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
     loadQuestionHistory();
   }, [loadQuestionHistory]);
 
-  // Only reload history when a new question is added
   useEffect(() => {
     const handleQuestionAdded = () => {
       loadQuestionHistory();
@@ -64,39 +77,33 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
     }
   };
 
-// Sidebar.js
-const handleQuestionClick = async (question, event) => {
-  console.log('🖱️ Question clicked:', question);
-  
-  // Prevent triggering if clicking the delete button
-  if (event.target.closest('.delete-button')) {
-    console.log('🚫 Delete button clicked, ignoring question selection');
-    return;
-  }
-  
-  if (onQuestionSelect) {
-    try {
-      console.log('🔍 Fetching full question details for ID:', question.id);
-      const fullQuestionData = await getQuestionDetails(question.id);
-      
-      console.log('📦 Full question data received:', fullQuestionData);
-      
-      const questionWithHistory = {
-        ...fullQuestionData,
-        isFromHistory: true
-      };
-      
-      console.log('🎯 Calling onQuestionSelect with:', questionWithHistory);
-      onQuestionSelect(questionWithHistory);
-    } catch (error) {
-      console.error('💥 Failed to fetch question details:', error);
+  const handleQuestionClick = async (question, event) => {
+    console.log('🖱️ Question clicked:', question);
+    console.log('🔍 question.simple_response:', question.simple_response);
+    if (event.target.closest('.delete-button')) {
+      console.log('🚫 Delete button clicked, ignoring question selection');
+      return;
     }
-  }
-};
+    if (onQuestionSelect) {
+      try {
+        console.log('🎯 Calling onQuestionSelect with:', {
+          ...question,
+          isFromHistory: true
+        });
+        onQuestionSelect({
+          ...question,
+          isFromHistory: true,
+          simple_response: question.simple_response || 'Simplified response not available',
+          detailed_response: question.detailed_response || 'Detailed response not available'
+        });
+      } catch (error) {
+        console.error('💥 Failed to process question click:', error);
+      }
+    }
+  };
 
   const handleDeleteQuestion = async (questionId, event) => {
-    event.stopPropagation(); // Prevent triggering the question selection
-    
+    event.stopPropagation();
     try {
       await deleteQuestion(questionId);
       setQuestions(questions.filter(q => q.id !== questionId));
@@ -107,7 +114,7 @@ const handleQuestionClick = async (question, event) => {
 
   const menuItems = [
     { icon: <Home size={20} />, label: 'Dashboard', path: '/dashboard' },
-    { icon: <User size={20} />, label: 'Profile', path: '/profile' },
+    { icon: <User size={20} />, label: 'Profile Vl', path: '/profile' },
     { icon: <Settings size={20} />, label: 'Settings', path: '/settings' },
     { icon: <HelpCircle size={20} />, label: 'Help', path: '/help' },
   ];

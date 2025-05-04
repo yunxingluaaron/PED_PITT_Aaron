@@ -29,7 +29,6 @@ const DashboardLayout = () => {
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 768);
   const sidebarRef = useRef(null);
 
-  // 动态计算可用宽度并更新 dimensions
   useEffect(() => {
     const updateDimensions = () => {
       const sidebarWidth = sidebarRef.current
@@ -38,9 +37,8 @@ const DashboardLayout = () => {
         ? 60
         : 200;
       const availableWidth = window.innerWidth - sidebarWidth - 40;
-      // 确保 questions.width 不超过可用宽度的 70%，留给 answers 足够空间
       const questionWidth = Math.min(dimensions.questions.width, availableWidth * 0.7);
-      const answerWidth = availableWidth - questionWidth - 2; // 减去 Splitter 宽度 (2px)
+      const answerWidth = availableWidth - questionWidth - 2;
       setDimensions((prev) => ({
         questions: { width: questionWidth, height: window.innerHeight - 100 },
         answers: { width: answerWidth, height: window.innerHeight - 100 },
@@ -79,13 +77,21 @@ const DashboardLayout = () => {
       setCurrentAnswer({
         id: question.id,
         conversation_id: question.conversation_id,
-        detailed_response: question.response,
+        simple_response: question.simple_response || question.response || 'Simplified response not available',
+        detailed_response: question.detailed_response || 'Detailed response not available',
+        response: question.simple_response || question.response || 'Simplified response not available',
         metadata: question.response_metadata || {},
         isHistoricalAnswer: true,
         parent_name: question.parent_name,
+        sources: question.source_data || []
       });
       setCurrentQuestion(question.content);
-      setSelectedHistoryQuestion(question);
+      setSelectedHistoryQuestion({
+        ...question,
+        simple_response: question.simple_response || question.response || 'Simplified response not available',
+        detailed_response: question.detailed_response || 'Detailed response not available',
+        response: question.simple_response || question.response || 'Simplified response not available'
+      });
       setCurrentQuestionId(question.id);
       if (question.parent_name) {
         setParentName(question.parent_name);
@@ -149,8 +155,14 @@ const DashboardLayout = () => {
   };
 
   const handleAnswerGenerated = (answer) => {
+    console.log('🔵 handleAnswerGenerated called with:', answer);
     if (!answer.isHistoricalAnswer) {
-      setCurrentAnswer(answer);
+      setCurrentAnswer({
+        ...answer,
+        simple_response: answer.simple_response || answer.response || 'Simplified response not available',
+        detailed_response: answer.detailed_response || 'Detailed response not available',
+        response: answer.simple_response || answer.response || 'Simplified response not available'
+      });
       setIsGenerating(false);
       if (answer.id) {
         setCurrentQuestionId(answer.id);
@@ -186,7 +198,7 @@ const DashboardLayout = () => {
       : 200;
     const availableWidth = window.innerWidth - sidebarWidth - 40;
     const questionWidth = newPosition;
-    const answerWidth = availableWidth - questionWidth - 2; // 减去 Splitter 宽度 (2px)
+    const answerWidth = availableWidth - questionWidth - 2;
     setDimensions({
       questions: { width: questionWidth, height: dimensions.questions.height },
       answers: { width: answerWidth, height: dimensions.answers.height },
@@ -201,8 +213,8 @@ const DashboardLayout = () => {
       : 200;
     const availableWidth = window.innerWidth - sidebarWidth - 40;
     return {
-      minPosition: 300, // 最小宽度 300px
-      maxPosition: availableWidth - 300, // 确保 Answer 面板最小宽度 300px
+      minPosition: 300,
+      maxPosition: availableWidth - 300,
     };
   };
 

@@ -77,8 +77,11 @@ def get_question_details(question_id):
         logger.info(f"💬 Found associated message with response length: {len(message.response or '')}")
 
         question_data = question.to_dict()
-        question_data['response'] = message.response  # simple_response
-        question_data['detailed_response'] = message.detailed_response  # detailed_response
+        question_data['simple_response'] = message.response or 'Simplified response not available'
+        question_data['detailed_response'] = message.detailed_response or 'Detailed response not available'
+        question_data['response'] = message.response or 'Simplified response not available'
+        logger.info(f"📝 question_data.simple_response: {question_data['simple_response']}")
+        logger.info(f"📝 question_data.detailed_response: {question_data['detailed_response']}")
         question_data['source_data'] = message.source_data
         question_data['response_metadata'] = message.response_metadata
 

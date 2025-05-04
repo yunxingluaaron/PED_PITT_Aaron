@@ -5,7 +5,7 @@ import VersionControl from './components/VersionControl';
 import VersionComparison from './components/VersionComparison';
 import useVersionHistory from './hooks/useVersionHistory';
 import useAnswerGeneration from './hooks/useAnswerGeneration';
-import DropdownMenu from '../QuestionSection/DropdownMenu'; // 假设复用现有的 DropdownMenu 组件
+import DropdownMenu from '../QuestionSection/DropdownMenu';
 
 export const AnswerSection = ({ 
   question,
@@ -20,8 +20,8 @@ export const AnswerSection = ({
     loading,
     error,
     answer,
-    detailedResponse, // 新增：从钩子中获取详细回答
-    simpleResponse,  // 新增：从钩子中获取简洁回答
+    detailedResponse,
+    simpleResponse,
     sources,
     relationships,
     metadata,
@@ -45,13 +45,12 @@ export const AnswerSection = ({
   const [originalContent, setOriginalContent] = useState('');
   const [showComparison, setShowComparison] = useState(false);
   const [currentParentName, setCurrentParentName] = useState(parentName || '');
-  const [responseMode, setResponseMode] = useState('simplified'); // 新增：管理用户选择的模式，默认简洁模式
+  const [responseMode, setResponseMode] = useState('simplified');
   const processedQuestionRef = useRef('');
   const initialLoadDone = useRef(false);
 
   const currentVersion = getCurrentVersion();
 
-  // Update currentParentName when parentName prop changes
   useEffect(() => {
     if (parentName !== undefined && parentName !== currentParentName) {
       console.log('🔄 Parent name updated from props:', parentName);
@@ -62,7 +61,6 @@ export const AnswerSection = ({
     }
   }, [parentName, currentParentName, updateParentName]);
 
-  // Handle new question submissions
   useEffect(() => {
     const handleNewQuestion = async (event) => {
       const { question, parameters, parentName: eventParentName } = event.detail;
@@ -100,16 +98,34 @@ export const AnswerSection = ({
     }
   }, [generateAnswerFromQuestion, onAnswerGenerated, currentParentName]);
 
-  // 修改：根据 responseMode 动态选择展示的内容
   useEffect(() => {
+    console.log('🔄 Response mode changed to:', responseMode);
+    console.log('📜 Current answer:', currentAnswer);
+    console.log('🤖 New answer data:', { answer, detailedResponse, simpleResponse });
+
+    let content;
     if (currentAnswer?.isHistoricalAnswer) {
-      console.log('📜 Setting content from historical answer');
-      const content = responseMode === 'detailed' 
-        ? currentAnswer.detailed_response 
-        : currentAnswer.simple_response || currentAnswer.detailed_response; // 回退到 detailed_response
-      setEditorContent(content);
-      setOriginalContent(content);
-      
+      console.log('📜 Processing historical answer');
+      console.log('🔍 currentAnswer.simple_response:', currentAnswer.simple_response);
+      console.log('🔍 currentAnswer.detailed_response:', currentAnswer.detailed_response);
+      console.log('🔍 currentAnswer.response:', currentAnswer.response);
+      content = responseMode === 'detailed' 
+        ? (currentAnswer.detailed_response || 'Detailed response not available')
+        : (currentAnswer.simple_response || currentAnswer.response || 'Simplified response not available');
+    } else if (answer) {
+      console.log('🤖 Processing new AI answer');
+      content = responseMode === 'detailed' 
+        ? (detailedResponse || 'Detailed response not available')
+        : (simpleResponse || 'Simplified response not available');
+    } else {
+      content = 'No response available';
+    }
+
+    console.log('📝 Setting editor content to:', content);
+    setEditorContent(content);
+    setOriginalContent(content);
+
+    if (currentAnswer?.isHistoricalAnswer) {
       if (currentAnswer.parent_name) {
         setCurrentParentName(currentAnswer.parent_name);
         if (updateParentName) {
@@ -119,25 +135,19 @@ export const AnswerSection = ({
       
       if (!initialLoadDone.current && currentAnswer.isHistoricalAnswer) {
         initialLoadDone.current = true;
-      } else if (!currentAnswer.isHistoricalAnswer && !versions.some(v => v.content === content)) {
+      } else if (!currentAnswer.isHistoricalAnswer && content && !versions.some(v => v.content === content)) {
         addVersion(content, 'ai', {
-          parent_name: currentAnswer.parent_name || currentParentName
+          parent_name: currentAnswer?.parent_name || currentParentName
         });
       }
       
       if (onSourcesUpdate) {
         onSourcesUpdate(currentAnswer.sources || []);
       }
-    } else if (answer) {
-      console.log('🤖 Setting content from new AI answer');
-      const content = responseMode === 'detailed' ? detailedResponse : simpleResponse;
-      setEditorContent(content);
-      setOriginalContent(content);
-      if (!versions.length) {
-        addVersion(content, 'ai', {
-          parent_name: currentParentName
-        });
-      }
+    } else if (answer && !versions.length) {
+      addVersion(content, 'ai', {
+        parent_name: currentParentName
+      });
     }
   }, [answer, detailedResponse, simpleResponse, responseMode, currentAnswer, versions, addVersion, onSourcesUpdate, currentParentName, updateParentName]);
 
@@ -160,7 +170,6 @@ export const AnswerSection = ({
     }
   }, [sources, onSourcesUpdate, currentAnswer]);
 
-  // Handle question processing
   useEffect(() => {
     const handleAnswer = async () => {
       if (question && 
@@ -176,8 +185,10 @@ export const AnswerSection = ({
             isHistoricalAnswer: true,
             conversation_id: selectedHistoryQuestion.conversation_id,
             response: selectedHistoryQuestion.response,
-            source_data: selectedHistoryQuestion.source_data,
-            response_metadata: selectedHistoryQuestion.response_metadata,
+            simple_response: selectedHistoryQuestion.simple_response || selectedHistoryQuestion.response || 'Simplified response not available',
+            detailed_response: selectedHistoryQuestion.detailed_response || 'Detailed response not available',
+            source_data: selectedHistoryQuestion.source_data || [],
+            response_metadata: selectedHistoryQuestion.response_metadata || {},
             question_id: selectedHistoryQuestion.id,
             parameters: question.parameters,
             parent_name: question.parentName || currentParentName
@@ -188,11 +199,12 @@ export const AnswerSection = ({
           };
 
           const response = await generateAnswerFromQuestion(question.question, options);
+          console.log('🔍 Response from generateAnswerFromQuestion:', response);
           
           if (response && (response.detailed_response || response.simple_response)) {
             const content = responseMode === 'detailed' 
-              ? response.detailed_response 
-              : response.simple_response || response.detailed_response; // 回退到 detailed_response
+              ? (response.detailed_response || 'Detailed response not available')
+              : (response.simple_response || response.response || 'Simplified response not available');
             setEditorContent(content);
             setOriginalContent(content);
             
@@ -200,8 +212,8 @@ export const AnswerSection = ({
               onAnswerGenerated({
                 id: response.question_id,
                 answer: content,
-                detailed_response: response.detailed_response, // 传递完整数据
-                simple_response: response.simple_response,     // 传递完整数据
+                detailed_response: response.detailed_response || 'Detailed response not available',
+                simple_response: response.simple_response || response.response || 'Simplified response not available',
                 sources: response.sources || [],
                 relationships: response.relationships || [],
                 metadata: response.metadata || {},
@@ -277,7 +289,6 @@ export const AnswerSection = ({
         <div className="flex-1 p-4 overflow-hidden flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">VineAI Response</h2>
-            {/* 新增：下拉菜单 */}
             <DropdownMenu
               options={[
                 { value: 'detailed', label: 'Detailed' },
@@ -300,7 +311,7 @@ export const AnswerSection = ({
                 <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
                 <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
                 <div className="h-4 bg-gray-200 rounded w-2/3 mb-4"></div>
-                <div className="h bahasa://github.com/4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
                 <div className="h-4 bg-gray-200 rounded w-1/2"></div>
               </div>
             ) : (

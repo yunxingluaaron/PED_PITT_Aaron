@@ -104,6 +104,7 @@ def submit_question():
                 conversation_id=conversation.id,
                 content=message,
                 response=analysis_results['simple_analysis'],
+                detailed_response = analysis_results['analysis'],
                 response_metadata=analysis_results['metadata'],
                 source_data=analysis_results['sources'],
                 relationship_data=[rel for result in hybrid_results 
@@ -182,13 +183,13 @@ def get_conversation(conversation_id):
         
         messages_data = [{
             'content': msg.content,
-            'simple_response': msg.response,  # 映射为 simple_response
-            'detailed_response': msg.detailed_response,  # 添加 detailed_response
-            'metadata': msg.response_metadata,  # 修正字段名
-            'sources': msg.source_data,  # 修正字段名
-            'relationships': msg.relationship_data,  # 修正字段名
+            'simple_response': msg.response,
+            'detailed_response': msg.detailed_response,
+            'metadata': msg.response_metadata,
+            'sources': msg.source_data,
+            'relationships': msg.relationship_data,
             'created_at': msg.created_at.isoformat(),
-            'parent_name': msg.parent_name  # 如果需要，也返回 parent_name
+            'parent_name': msg.parent_name
         } for msg in messages]
         
         return jsonify({
