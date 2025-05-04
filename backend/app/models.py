@@ -1,4 +1,3 @@
-# app/models.py
 from datetime import datetime
 from app.database import db
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -57,13 +56,14 @@ class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     conversation_id = db.Column(db.Integer, db.ForeignKey('conversations.id'))
     content = db.Column(db.Text, nullable=False)
-    response = db.Column(db.Text)
-    response_metadata = db.Column(JSON)  # Changed from metadata to response_metadata
-    source_data = db.Column(JSON)        # Changed from sources to source_data
-    relationship_data = db.Column(JSON)   # Changed from relationships to relationship_data
-    parent_name = db.Column(db.String(255), nullable=True)  # Added parent_name field
+    response = db.Column(db.Text)  # 存储 simple_response
+    detailed_response = db.Column(db.Text, nullable=True)  # 新增：存储 detailed_response
+    response_metadata = db.Column(JSON)
+    source_data = db.Column(JSON)
+    relationship_data = db.Column(JSON)
+    parent_name = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    message_type = db.Column(db.String(50), default='text')  # text, image, etc.
+    message_type = db.Column(db.String(50), default='text')
 
     def to_dict(self):
         """Convert message object to dictionary."""
@@ -72,10 +72,11 @@ class Message(db.Model):
             'conversation_id': self.conversation_id,
             'content': self.content,
             'response': self.response,
+            'detailed_response': self.detailed_response,  # 新增
             'metadata': self.response_metadata,
             'sources': self.source_data,
             'relationships': self.relationship_data,
-            'parent_name': self.parent_name,  # Include parent_name in dict
+            'parent_name': self.parent_name,
             'created_at': self.created_at.isoformat(),
             'message_type': self.message_type
         }
@@ -88,7 +89,7 @@ class Question(db.Model):
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     conversation_id = db.Column(db.Integer, db.ForeignKey('conversations.id'))
-    parent_name = db.Column(db.String(255), nullable=True)  # Added parent_name field
+    parent_name = db.Column(db.String(255), nullable=True)
     versions = db.relationship('VersionHistory', backref='question', lazy=True)
     is_archived = db.Column(db.Boolean, default=False)
 
@@ -100,7 +101,7 @@ class Question(db.Model):
             'content': self.content,
             'created_at': self.created_at.isoformat(),
             'conversation_id': self.conversation_id,
-            'parent_name': self.parent_name,  # Include parent_name in dict
+            'parent_name': self.parent_name,
             'is_archived': self.is_archived
         }
 
@@ -112,7 +113,7 @@ class VersionHistory(db.Model):
     content = db.Column(db.Text, nullable=False)
     type = db.Column(db.String(50), nullable=False)  # 'user' or 'ai'
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    parent_name = db.Column(db.String(255), nullable=True)  # Added parent_name field
+    parent_name = db.Column(db.String(255), nullable=True)
     is_liked = db.Column(db.Boolean, default=False)
     is_bookmarked = db.Column(db.Boolean, default=False)
 
@@ -123,7 +124,7 @@ class VersionHistory(db.Model):
             'content': self.content,
             'type': self.type,
             'timestamp': self.timestamp.isoformat(),
-            'parent_name': self.parent_name,  # Include parent_name in dict
+            'parent_name': self.parent_name,
             'is_liked': self.is_liked,
             'is_bookmarked': self.is_bookmarked,
         }

@@ -5,18 +5,19 @@ export const useAnswerGeneration = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [answer, setAnswer] = useState(null);
+  const [detailedResponse, setDetailedResponse] = useState(null); // 新增：存储详细回答
+  const [simpleResponse, setSimpleResponse] = useState(null);    // 新增：存储简洁回答
   const [sources, setSources] = useState([]);
   const [relationships, setRelationships] = useState([]);
   const [conversationId, setConversationId] = useState(null);
   const [metadata, setMetadata] = useState(null);
   const [questionId, setQuestionId] = useState(null);
-  const [parentName, setParentName] = useState(''); // Add state for parent name
+  const [parentName, setParentName] = useState('');
 
   const generateAnswerFromQuestion = useCallback(async (question, options = {}) => {
     setLoading(true);
     setError(null);
 
-    // Store parent name in state if provided
     if (options.parent_name !== undefined) {
       setParentName(options.parent_name);
     }
@@ -29,14 +30,14 @@ export const useAnswerGeneration = () => {
       const requestData = {
         message: question,
         conversation_id: options.conversation_id || conversationId,
-        parent_name: options.parent_name || parentName, // Include parent name in request
+        parent_name: options.parent_name || parentName,
         options: {
           isHistoricalAnswer: options.isHistoricalAnswer || false,
           conversation_id: options.conversation_id,
           response: options.response,
           source_data: options.source_data,
           response_metadata: options.response_metadata,
-          parent_name: options.parent_name || parentName // Include parent name in options
+          parent_name: options.parent_name || parentName
         },
         parameters: options.parameters || {
           tone: 'balanced',
@@ -48,32 +49,32 @@ export const useAnswerGeneration = () => {
       
       const response = await generateAnswer(requestData);
 
-      // Update states
-      setAnswer(response.detailed_response);
+      // 修改：分别存储 detailed_response 和 simple_response
+      setAnswer(response.detailed_response); // 保持原有逻辑兼容性
+      setDetailedResponse(response.detailed_response);
+      setSimpleResponse(response.simple_response || response.detailed_response); // 回退到 detailed_response
       setSources(response.sources || []);
       setRelationships(response.relationships || []);
       setConversationId(response.conversation_id);
       setMetadata({
         ...response.metadata,
         parameters: options.parameters,
-        question, // Store original question
-        parent_name: options.parent_name || parentName || response.parent_name // Store parent name in metadata
+        question,
+        parent_name: options.parent_name || parentName || response.parent_name
       });
       setQuestionId(response.question_id);
 
-      // If response includes parent name, update state
       if (response.parent_name) {
         setParentName(response.parent_name);
       }
 
-      // Only dispatch event for new questions with metadata
       if (!options.isHistoricalAnswer) {
         window.dispatchEvent(new CustomEvent('questionAnswered', {
           detail: {
             parameters: options.parameters,
             question,
             response: response.detailed_response,
-            parent_name: options.parent_name || parentName || response.parent_name // Include parent name in event
+            parent_name: options.parent_name || parentName || response.parent_name
           }
         }));
       }
@@ -83,7 +84,7 @@ export const useAnswerGeneration = () => {
         isHistoricalAnswer: options.isHistoricalAnswer,
         parameters: options.parameters,
         originalQuestion: question,
-        parent_name: options.parent_name || parentName || response.parent_name // Include parent name in return value
+        parent_name: options.parent_name || parentName || response.parent_name
       };
     } catch (err) {
       console.error('❌ Error generating answer:', err);
@@ -96,18 +97,18 @@ export const useAnswerGeneration = () => {
 
   const clearAnswer = useCallback(() => {
     setAnswer(null);
+    setDetailedResponse(null); // 新增：清除详细回答
+    setSimpleResponse(null);   // 新增：清除简洁回答
     setSources([]);
     setRelationships([]);
     setMetadata(null);
     setError(null);
-    // Note: We don't clear parent name when clearing answer
   }, []);
 
   const resetError = useCallback(() => {
     setError(null);
   }, []);
 
-  // Add function to update parent name
   const updateParentName = useCallback((name) => {
     setParentName(name);
   }, []);
@@ -116,16 +117,18 @@ export const useAnswerGeneration = () => {
     loading,
     error,
     answer,
+    detailedResponse, // 新增：暴露 detailedResponse
+    simpleResponse,  // 新增：暴露 simpleResponse
     sources,
     relationships,
     metadata,
     conversationId,
     questionId,
-    parentName, // Expose parent name in return object
+    parentName,
     generateAnswerFromQuestion,
     clearAnswer,
     resetError,
-    updateParentName // Expose function to update parent name
+    updateParentName
   };
 };
 

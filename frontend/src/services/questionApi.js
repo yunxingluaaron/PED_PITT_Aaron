@@ -7,14 +7,14 @@ export const generateAnswer = async ({
   options = {}, 
   conversation_id = null, 
   parameters = null,
-  parent_name = null  // Add parent_name parameter
+  parent_name = null
 }) => {
   console.log('🚀 generateAnswer called with:', { 
     message, 
     options, 
     conversation_id,
     parameters,
-    parent_name  // Log parent_name for debugging
+    parent_name
   });
   
   // Handle historical questions
@@ -23,14 +23,15 @@ export const generateAnswer = async ({
     return {
       conversation_id: options.conversation_id,
       detailed_response: options.response,
+      simple_response: options.simple_response || options.response, // 新增：支持历史答案的 simple_response
       sources: options.source_data || [],
       metadata: {
         ...options.response_metadata,
         parameters: parameters || options.parameters,
-        parent_name: parent_name || options.parent_name  // Include parent_name in metadata
+        parent_name: parent_name || options.parent_name
       },
       isHistoricalAnswer: true,
-      parent_name: parent_name || options.parent_name  // Include parent_name in response
+      parent_name: parent_name || options.parent_name
     };
   }
 
@@ -50,7 +51,7 @@ export const generateAnswer = async ({
         professionalStyle: 'clinicallyBalanced'
       },
       response_type: 'text',
-      parent_name: parent_name || null  // Add parent_name to the request
+      parent_name: parent_name || null
     };
 
     console.log('📤 Request data being sent:', JSON.stringify(requestData, null, 2));
@@ -100,6 +101,7 @@ export const generateAnswer = async ({
   }
 };
 
+// 其余函数保持不变
 export const getQuestionHistory = async () => {
   console.log('🔴 getQuestionHistory called');
   const token = localStorage.getItem('auth_token');

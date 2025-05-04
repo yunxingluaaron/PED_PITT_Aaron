@@ -82,7 +82,7 @@ def submit_question():
                 user_id=user_id,
                 content=message,
                 conversation_id=conversation.id,
-                parent_name=parent_name  # Add parent name to the question
+                parent_name=parent_name
             )
             db.session.add(new_question)
             db.session.flush()
@@ -93,7 +93,7 @@ def submit_question():
                 analysis_results = es_querier.process_search_results(
                     results=hybrid_results,
                     query=message,
-                    parameters=parameters  # Pass parameters with parent_name
+                    parameters=parameters
                 )
             except Exception as e:
                 logger.error(f"Search/Analysis error: {str(e)}", exc_info=True)
@@ -108,7 +108,7 @@ def submit_question():
                 source_data=analysis_results['sources'],
                 relationship_data=[rel for result in hybrid_results 
                              for rel in result.get('relationships', [])],
-                parent_name=parent_name  # Add parent name to the message
+                parent_name=parent_name
             )
             db.session.add(new_message)
 
@@ -118,7 +118,7 @@ def submit_question():
                 content=message,
                 type='user',
                 timestamp=datetime.utcnow(),
-                parent_name=parent_name  # Add parent name to user version
+                parent_name=parent_name
             )
             db.session.add(user_version)
 
@@ -127,17 +127,18 @@ def submit_question():
                 content=analysis_results['simple_analysis'],
                 type='ai',
                 timestamp=datetime.utcnow(),
-                parent_name=parent_name  # Add parent name to AI version
+                parent_name=parent_name
             )
             db.session.add(ai_version)
 
             db.session.commit()
 
-            # Prepare response
+            # Prepare response with both detailed and simple analysis
             response_data = {
                 'conversation_id': conversation_id,
                 'question_id': new_question.id,
-                'detailed_response': analysis_results['simple_analysis'],
+                'detailed_response': analysis_results['analysis'],  # 返回详细分析
+                'simple_response': analysis_results['simple_analysis'],  # 返回简洁分析
                 'sources': analysis_results['sources'],
                 'metadata': analysis_results['metadata'],
                 'relationships': [rel for result in hybrid_results 
@@ -145,7 +146,7 @@ def submit_question():
                 'text_content': analysis_results['text_content'],
                 'ai_version_id': ai_version.id,
                 'user_version_id': user_version.id,
-                'parent_name': parent_name  # Include parent name in response
+                'parent_name': parent_name
             }
 
             return jsonify(response_data)
