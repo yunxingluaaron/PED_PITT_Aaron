@@ -12,7 +12,8 @@ import {
   AlignCenter,
   AlignRight,
   Trash2,
-  RotateCcw
+  RotateCcw,
+  ArrowLeft 
 } from 'lucide-react';
 
 const MenuBar = ({ editor, onReset, onClear }) => {
@@ -22,7 +23,14 @@ const MenuBar = ({ editor, onReset, onClear }) => {
 
   const ToolbarButton = ({ onClick, isActive, icon: Icon, title }) => (
     <button
-      onClick={onClick}
+      onClick={(e) => {
+        e.preventDefault(); // 防止默认行为干扰
+        // 如果编辑器未处于焦点状态，显式设置焦点
+        if (!editor.isFocused) {
+          editor.commands.focus(); // 确保编辑器获得焦点
+        }
+        onClick(); // 执行样式命令
+      }}
       className={`p-2 rounded hover:bg-gray-200 ${
         isActive ? 'bg-gray-200' : ''
       }`}
@@ -38,73 +46,75 @@ const MenuBar = ({ editor, onReset, onClear }) => {
 
   return (
     <div className="border-b border-gray-200 p-2 flex flex-wrap gap-2 bg-gray-50 justify-between">
-      <div className="flex flex-wrap gap-2">
+      {/* <div className="flex flex-wrap gap-2">
         <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBold().run()}
+          onClick={() => editor.chain().toggleBold().run()}
           isActive={editor.isActive('bold')}
           icon={Bold}
           title="Bold"
         />
         <ToolbarButton
-          onClick={() => editor.chain().focus().toggleItalic().run()}
+          onClick={() => editor.chain().toggleItalic().run()}
           isActive={editor.isActive('italic')}
           icon={Italic}
           title="Italic"
         />
         <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHighlight().run()}
+          onClick={() => editor.chain().toggleHighlight().run()}
           isActive={editor.isActive('highlight')}
           icon={Highlighter}
           title="Highlight"
         />
         <Divider />
         <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          onClick={() => editor.chain().toggleHeading({ level: 2 }).run()}
           isActive={editor.isActive('heading', { level: 2 })}
           icon={Heading2}
           title="Heading 2"
         />
         <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          onClick={() => editor.chain().toggleBulletList().run()}
           isActive={editor.isActive('bulletList')}
           icon={List}
           title="Bullet List"
         />
         <Divider />
         <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('left').run()}
+          onClick={() => editor.chain().setTextAlign('left').run()}
           isActive={editor.isActive({ textAlign: 'left' })}
           icon={AlignLeft}
           title="Align Left"
         />
         <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('center').run()}
+          onClick={() => editor.chain().setTextAlign('center').run()}
           isActive={editor.isActive({ textAlign: 'center' })}
           icon={AlignCenter}
           title="Align Center"
         />
         <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('right').run()}
+          onClick={() => editor.chain().setTextAlign('right').run()}
           isActive={editor.isActive({ textAlign: 'right' })}
           icon={AlignRight}
           title="Align Right"
         />
-      </div>
+      </div> */}
       <div className="flex gap-2">
-        <button
+      <button
           onClick={onReset}
-          className="p-2 rounded hover:bg-gray-200 text-gray-600"
+          className="p-2 rounded hover:bg-gray-200 text-gray-600 flex items-center gap-1"
           title="Reset to original"
+          aria-label="Reset to original content"
         >
           <RotateCcw size={16} />
+          <span className="text-sm">Undo the Text Change to the original</span>
         </button>
-        <button
+        {/* <button
           onClick={onClear}
           className="p-2 rounded hover:bg-gray-200 text-gray-600"
           title="Clear content"
         >
           <Trash2 size={16} />
-        </button>
+        </button> */}
       </div>
     </div>
   );

@@ -12,7 +12,8 @@ const ActionBar = ({
 }) => {
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(textToCopy);
+      await navigator.clipboard.writeText(textToCopy); // 这个不是在 call backend 函数，是browser-native function available in modern web browsers (part of the Web Clipboard API).
+      
       // Call the onCopy callback to save version
       if (onCopy) {
         onCopy(textToCopy);
@@ -24,14 +25,14 @@ const ActionBar = ({
 
   return (
     <div className="flex items-center gap-4 p-2 border-t border-gray-200">
-      <button
+      {/* <button
         onClick={onSave}
         className="flex items-center gap-2 px-3 py-1 text-sm rounded-md 
           bg-blue-500 text-white hover:bg-blue-600"
       >
         <SaveIcon size={16} />
         Save
-      </button>
+      </button> */}
       <button
         onClick={handleCopy}
         className="flex items-center gap-2 px-3 py-1 text-sm rounded-md 
@@ -40,7 +41,7 @@ const ActionBar = ({
         <CopyIcon size={16} />
         Copy
       </button>
-      <button
+      {/* <button
         onClick={onLike}
         className={`p-1 rounded-md hover:bg-gray-100 ${
           isLiked ? 'text-red-500' : 'text-gray-500'
@@ -55,7 +56,7 @@ const ActionBar = ({
         }`}
       >
         <BookmarkIcon size={20} />
-      </button>
+      </button> */}
     </div>
   );
 };
