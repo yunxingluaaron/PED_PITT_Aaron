@@ -23,11 +23,12 @@ const DashboardLayout = () => {
   const [currentQuestionId, setCurrentQuestionId] = useState(null);
   const [parentName, setParentName] = useState('');
   const [dimensions, setDimensions] = useState({
-    questions: { width: 400, height: 800 },
-    answers: { width: 400, height: 800 },
+    questions: { width: 400, height: window.innerHeight },
+    answers: { width: 400, height: window.innerHeight },
   });
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 768);
   const sidebarRef = useRef(null);
+  const mainContainerRef = useRef(null);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -36,12 +37,12 @@ const DashboardLayout = () => {
         : isCollapsed
         ? 60
         : 200;
-      const availableWidth = window.innerWidth - sidebarWidth - 40;
+      const availableWidth = window.innerWidth - sidebarWidth;
       const questionWidth = Math.min(dimensions.questions.width, availableWidth * 0.7);
-      const answerWidth = availableWidth - questionWidth - 2;
+      const answerWidth = availableWidth - questionWidth;
       setDimensions((prev) => ({
-        questions: { width: questionWidth, height: window.innerHeight - 100 },
-        answers: { width: answerWidth, height: window.innerHeight - 100 },
+        questions: { width: questionWidth, height: window.innerHeight },
+        answers: { width: answerWidth, height: window.innerHeight },
       }));
       setIsSmallScreen(window.innerWidth < 768);
       if (window.innerWidth < 768) {
@@ -196,12 +197,12 @@ const DashboardLayout = () => {
       : isCollapsed
       ? 60
       : 200;
-    const availableWidth = window.innerWidth - sidebarWidth - 40;
-    const questionWidth = newPosition;
-    const answerWidth = availableWidth - questionWidth - 2;
+    const availableWidth = window.innerWidth - sidebarWidth;
+    const questionWidth = Math.max(300, Math.min(newPosition, availableWidth - 300));
+    const answerWidth = availableWidth - questionWidth;
     setDimensions({
-      questions: { width: questionWidth, height: dimensions.questions.height },
-      answers: { width: answerWidth, height: dimensions.answers.height },
+      questions: { width: questionWidth, height: window.innerHeight },
+      answers: { width: answerWidth, height: window.innerHeight },
     });
   };
 
@@ -211,7 +212,7 @@ const DashboardLayout = () => {
       : isCollapsed
       ? 60
       : 200;
-    const availableWidth = window.innerWidth - sidebarWidth - 40;
+    const availableWidth = window.innerWidth - sidebarWidth;
     return {
       minPosition: 300,
       maxPosition: availableWidth - 300,
@@ -229,26 +230,29 @@ const DashboardLayout = () => {
       </div>
 
       <div
-        className={`flex-1 flex p-4 ${
+        ref={mainContainerRef}
+        className={`flex-1 flex ${
           isSmallScreen ? 'flex-col' : 'flex-row'
-        } max-w-full`}
+        } max-w-full h-full`}
       >
-        <div className={`flex-none ${isSmallScreen ? 'mb-4' : ''}`}>
+        <div className={`flex-none ${isSmallScreen ? 'mb-4 w-full' : ''}`}>
           <ResizablePanel
             width={dimensions.questions.width}
             height={dimensions.questions.height}
             onResize={handleResize('questions')}
-            minConstraints={[isSmallScreen ? 200 : 300, 400]}
-            maxConstraints={[isSmallScreen ? window.innerWidth - 40 : 800, window.innerHeight - 100]}
+            minConstraints={[isSmallScreen ? 200 : 300, window.innerHeight]}
+            maxConstraints={[isSmallScreen ? window.innerWidth : 800, window.innerHeight]}
             resizeHandles={['s']}
+            className={isSmallScreen ? 'w-full' : ''}
           >
-            <div className="p-4 h-full overflow-auto">
+            <div className="flex flex-col h-full min-h-full">
               <QuestionSection
                 onQuestionSubmit={handleQuestionSubmit}
                 isGenerating={isGenerating}
                 initialQuestion={selectedHistoryQuestion?.content}
                 selectedHistoryQuestion={selectedHistoryQuestion}
                 initialParentName={parentName}
+                className="flex-1 overflow-auto"
               />
             </div>
           </ResizablePanel>
@@ -258,21 +262,23 @@ const DashboardLayout = () => {
           <Splitter
             onDrag={handleSplitterDrag}
             initialPosition={dimensions.questions.width}
-            {...getSplitterConstraints()}
+            minPosition={getSplitterConstraints().minPosition}
+            maxPosition={getSplitterConstraints().maxPosition}
+            containerOffset={mainContainerRef.current?.offsetLeft || 0}
           />
         )}
 
-        <div className={`flex-none ${isSmallScreen ? '' : ''}`}>
+        <div className={`flex-none ${isSmallScreen ? 'w-full' : ''}`}>
           <ResizablePanel
             width={dimensions.answers.width}
             height={dimensions.answers.height}
             onResize={handleResize('answers')}
-            minConstraints={[isSmallScreen ? 200 : 300, 400]}
-            maxConstraints={[isSmallScreen ? window.innerWidth - 40 : 800, window.innerHeight - 100]}
+            minConstraints={[isSmallScreen ? 200 : 300, window.innerHeight]}
+            maxConstraints={[isSmallScreen ? window.innerWidth : 800, window.innerHeight]}
             resizeHandles={['s']}
-            className="ml-auto"
+            className={isSmallScreen ? 'w-full' : 'ml-auto'}
           >
-            <div className="p-4 h-full overflow-auto">
+            <div className="flex flex-col h-full min-h-full">
               <AnswerSection
                 question={currentQuestion}
                 questionId={currentQuestionId}
@@ -282,6 +288,7 @@ const DashboardLayout = () => {
                 selectedHistoryQuestion={selectedHistoryQuestion}
                 currentAnswer={currentAnswer}
                 parentName={parentName}
+                className="flex-1 overflow-auto"
               />
             </div>
           </ResizablePanel>

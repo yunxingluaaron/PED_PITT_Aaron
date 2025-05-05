@@ -1,4 +1,3 @@
-// src/components/QuestionSection/index.js
 import React, { useState, useEffect, useRef } from 'react';
 import QuestionInput from './QuestionInput';
 import DropdownMenu from './DropdownMenu';
@@ -8,7 +7,8 @@ const QuestionSection = ({
   isGenerating,
   initialQuestion,
   selectedHistoryQuestion,
-  initialParentName = '' // Add initialParentName prop with default empty string
+  initialParentName = '',
+  className // Add className prop to receive styles from parent
 }) => {
   const [question, setQuestion] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
@@ -16,14 +16,12 @@ const QuestionSection = ({
   const [parentName, setParentName] = useState(initialParentName);
   
   const [dropdownValues, setDropdownValues] = useState({
-    // Response Style dropdowns
     tone: 'balanced',
     detailLevel: 'moderate',
     empathy: 'moderate',
     professionalStyle: 'clinicallyBalanced'
   });
 
-  // Log component render
   console.log('🟡 QuestionSection rendered:', {
     isGenerating,
     initialQuestion,
@@ -33,19 +31,16 @@ const QuestionSection = ({
     initialParentName
   });
 
-  // Track history question changes
   useEffect(() => {
     console.log('🟡 selectedHistoryQuestion changed:', selectedHistoryQuestion);
     if (selectedHistoryQuestion?.isFromHistory) {
       wasSetFromHistory.current = true;
-      // If history question has parent_name, set it
       if (selectedHistoryQuestion.parent_name) {
         setParentName(selectedHistoryQuestion.parent_name);
       }
     }
   }, [selectedHistoryQuestion]);
 
-  // Handle initial question changes
   useEffect(() => {
     console.log('🟡 initialQuestion effect triggered:', {
       initialQuestion,
@@ -62,7 +57,6 @@ const QuestionSection = ({
     }
   }, [initialQuestion]);
 
-  // Handle initialParentName changes
   useEffect(() => {
     console.log('🟡 initialParentName changed:', initialParentName);
     if (initialParentName !== parentName) {
@@ -70,7 +64,6 @@ const QuestionSection = ({
     }
   }, [initialParentName]);
 
-  // Handle loading state
   useEffect(() => {
     console.log('🟡 isGenerating changed:', {
       isGenerating,
@@ -88,7 +81,6 @@ const QuestionSection = ({
   
     setLocalLoading(true);
     try {
-      // Only send original response style parameters to backend
       const responseStyleParameters = {
         tone: dropdownValues.tone,
         detailLevel: dropdownValues.detailLevel,
@@ -99,7 +91,7 @@ const QuestionSection = ({
       await onQuestionSubmit({
         question: value,
         parameters: responseStyleParameters,
-        parentName: parentName // Send parentName to parent component
+        parentName: parentName
       });
     } catch (error) {
       console.error('Error submitting question:', error);
@@ -110,11 +102,9 @@ const QuestionSection = ({
   const handleClear = () => {
     console.log('🟡 Clearing question');
     setQuestion('');
-    // Don't clear parentName when clearing the question
     wasSetFromHistory.current = false;
     if (selectedHistoryQuestion) {
       console.log('🟡 Resetting history state');
-      // Only send original response style parameters when clearing
       const responseStyleParameters = {
         tone: dropdownValues.tone,
         detailLevel: dropdownValues.detailLevel,
@@ -126,7 +116,7 @@ const QuestionSection = ({
         question: '',
         parameters: responseStyleParameters,
         clearOnly: true,
-        parentName: parentName // Include parentName when clearing
+        parentName: parentName
       });
     }
   };
@@ -178,13 +168,12 @@ const QuestionSection = ({
   ];
 
   return (
-    <div className="bg-white rounded-lg shadow-sm">
+    <div className={`bg-white rounded-lg shadow-sm pl-16 ${className}`}>
       <div className={`p-4 transition-all duration-200 ${
         localLoading || isGenerating ? 'opacity-50' : 'opacity-100'
       }`}>
         <h2 className="text-xl font-bold mb-4">Questions Enter</h2>
         
-        {/* Parent Name Input moved under Questions Enter */}
         <div className="mb-4 flex items-center gap-4">
           <label htmlFor="parentName" className="text-sm font-medium text-gray-700 whitespace-nowrap min-w-[100px]">
             Parent Name
@@ -209,7 +198,7 @@ const QuestionSection = ({
           isHistoricalQuestion={selectedHistoryQuestion?.isFromHistory}
         />
 
-        <div className="mt-6">
+        {/* <div className="mt-6">
           <h3 className="text-sm font-medium text-gray-700 mb-2">
             Customize Response Style
           </h3>
@@ -225,12 +214,43 @@ const QuestionSection = ({
               />
             ))}
           </div>
-        </div>
+        </div> */}
           
-        {/* Help text */}
         <p className="mt-2 text-sm text-gray-500">
           Adjust these options to customize how the response is written and formatted.
         </p>
+
+        <div className="mt-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Placeholder Section 1</h1>
+          <p className="text-sm text-gray-600 mb-4">
+            Placeholder description for Section 1. This will be replaced with actual content.
+          </p>
+          
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">Placeholder Subsection 1.1</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Placeholder description for Subsection 1.1. This will be replaced with actual content.
+          </p>
+          
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">Placeholder Subsection 1.2</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Placeholder description for Subsection 1.2. This will be replaced with actual content.
+          </p>
+
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Placeholder Section 2</h1>
+          <p className="text-sm text-gray-600 mb-4">
+            Placeholder description for Section 2. This will be replaced with actual content.
+          </p>
+          
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">Placeholder Subsection 2.1</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Placeholder description for Subsection 2.1. This will be replaced with actual content.
+          </p>
+          
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">Placeholder Subsection 2.2</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Placeholder description for Subsection 2.2. This will be replaced with actual content.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -342,11 +342,11 @@ export const AnswerSection = ({
           />
         )}
       </div>
-      <VersionControl
+      {/* <VersionControl
         versions={versions}
         currentVersion={currentVersionId}
         onVersionSelect={setCurrentVersionId}
-      />
+      /> */}
     </div>
   );
 };
