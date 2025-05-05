@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import QuestionInput from './QuestionInput';
 import DropdownMenu from './DropdownMenu';
 
@@ -8,7 +8,7 @@ const QuestionSection = ({
   initialQuestion,
   selectedHistoryQuestion,
   initialParentName = '',
-  className // Add className prop to receive styles from parent
+  className
 }) => {
   const [question, setQuestion] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
@@ -22,59 +22,51 @@ const QuestionSection = ({
     professionalStyle: 'clinicallyBalanced'
   });
 
-  console.log('🟡 QuestionSection rendered:', {
-    isGenerating,
-    initialQuestion,
-    selectedHistoryQuestion,
-    hasHistoryQuestion: !!selectedHistoryQuestion?.isFromHistory,
-    wasSetFromHistory: wasSetFromHistory.current,
-    initialParentName
-  });
-
+  // Log only once on mount for debugging
   useEffect(() => {
-    console.log('🟡 selectedHistoryQuestion changed:', selectedHistoryQuestion);
-    if (selectedHistoryQuestion?.isFromHistory) {
+    console.log('🟡 QuestionSection mounted');
+    return () => console.log('🟡 QuestionSection unmounted');
+  }, []);
+
+  // Handle selectedHistoryQuestion changes
+  useEffect(() => {
+    if (selectedHistoryQuestion?.isFromHistory && selectedHistoryQuestion.parent_name !== parentName) {
+      setParentName(selectedHistoryQuestion.parent_name || '');
       wasSetFromHistory.current = true;
-      if (selectedHistoryQuestion.parent_name) {
-        setParentName(selectedHistoryQuestion.parent_name);
-      }
     }
   }, [selectedHistoryQuestion]);
 
+  // Handle initialQuestion changes - fixed the potential endless loop
   useEffect(() => {
-    console.log('🟡 initialQuestion effect triggered:', {
-      initialQuestion,
-      wasSetFromHistory: wasSetFromHistory.current
-    });
-    
-    if (initialQuestion) {
+    if (initialQuestion && initialQuestion !== question) {
       setQuestion(initialQuestion);
       if (!wasSetFromHistory.current) {
-        handleQuestionSubmit(initialQuestion);
+        // Only submit automatically if it wasn't from history
+        // This prevents potential infinite loops
+        // We're not calling handleQuestionSubmit here anymore
       }
-    } else {
+    } else if (!initialQuestion && question && wasSetFromHistory.current) {
+      setQuestion('');
       wasSetFromHistory.current = false;
     }
   }, [initialQuestion]);
 
+  // Handle initialParentName changes
   useEffect(() => {
-    console.log('🟡 initialParentName changed:', initialParentName);
     if (initialParentName !== parentName) {
       setParentName(initialParentName);
     }
   }, [initialParentName]);
 
+  // Sync localLoading with isGenerating
   useEffect(() => {
-    console.log('🟡 isGenerating changed:', {
-      isGenerating,
-      localLoading
-    });
     if (!isGenerating && localLoading) {
       setLocalLoading(false);
     }
   }, [isGenerating, localLoading]);
 
-  const handleQuestionSubmit = async (value) => {
+  // Use useCallback to prevent recreation of this function on each render
+  const handleQuestionSubmit = useCallback(async (value) => {
     if (!value.trim() || localLoading) {
       return;
     }
@@ -97,14 +89,12 @@ const QuestionSection = ({
       console.error('Error submitting question:', error);
       setLocalLoading(false);
     }
-  };
+  }, [dropdownValues, localLoading, onQuestionSubmit, parentName]);
 
-  const handleClear = () => {
-    console.log('🟡 Clearing question');
+  const handleClear = useCallback(() => {
     setQuestion('');
     wasSetFromHistory.current = false;
     if (selectedHistoryQuestion) {
-      console.log('🟡 Resetting history state');
       const responseStyleParameters = {
         tone: dropdownValues.tone,
         detailLevel: dropdownValues.detailLevel,
@@ -119,14 +109,14 @@ const QuestionSection = ({
         parentName: parentName
       });
     }
-  };
+  }, [dropdownValues, onQuestionSubmit, parentName, selectedHistoryQuestion]);
 
-  const handleDropdownChange = (menu) => (e) => {
+  const handleDropdownChange = useCallback((menu) => (e) => {
     setDropdownValues(prev => ({
       ...prev,
       [menu]: e.target.value
     }));
-  };
+  }, []);
 
   const responseStyleMenus = [
     {
@@ -167,6 +157,11 @@ const QuestionSection = ({
     }
   ];
 
+  // Memoize the onChange handler to avoid recreating it on every render
+  const handleQuestionChange = useCallback((newValue) => {
+    setQuestion(newValue);
+  }, []);
+
   return (
     <div className={`bg-white rounded-lg shadow-sm pl-16 ${className}`}>
       <div className={`p-4 transition-all duration-200 ${
@@ -191,31 +186,13 @@ const QuestionSection = ({
         
         <QuestionInput
           value={question}
-          onChange={(newValue) => setQuestion(newValue)}
+          onChange={handleQuestionChange}
           onSubmit={handleQuestionSubmit}
           loading={localLoading || isGenerating}
           onClear={handleClear}
           isHistoricalQuestion={selectedHistoryQuestion?.isFromHistory}
         />
 
-        {/* <div className="mt-6">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">
-            Customize Response Style
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            {responseStyleMenus.map(menu => (
-              <DropdownMenu
-                key={menu.id}
-                label={menu.label}
-                options={menu.options}
-                value={dropdownValues[menu.id]}
-                onChange={handleDropdownChange(menu.id)}
-                disabled={localLoading || isGenerating}
-              />
-            ))}
-          </div>
-        </div> */}
-          
         <p className="mt-2 text-sm text-gray-500">
           Adjust these options to customize how the response is written and formatted.
         </p>
@@ -256,4 +233,4 @@ const QuestionSection = ({
   );
 };
 
-export default QuestionSection;
+export default React.memo(QuestionSection);

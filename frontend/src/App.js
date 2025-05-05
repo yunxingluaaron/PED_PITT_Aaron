@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './lib/hooks/useAuth';
 import LoginPage from './components/auth/LoginPage';
@@ -191,7 +191,7 @@ const DashboardLayout = () => {
     }));
   };
 
-  const handleSplitterDrag = (newPosition) => {
+  const handleSplitterDrag = useCallback((newPosition) => {
     const sidebarWidth = sidebarRef.current
       ? sidebarRef.current.offsetWidth
       : isCollapsed
@@ -200,11 +200,22 @@ const DashboardLayout = () => {
     const availableWidth = window.innerWidth - sidebarWidth;
     const questionWidth = Math.max(300, Math.min(newPosition, availableWidth - 300));
     const answerWidth = availableWidth - questionWidth;
-    setDimensions({
-      questions: { width: questionWidth, height: window.innerHeight },
-      answers: { width: answerWidth, height: window.innerHeight },
+    
+    // Only update dimensions if they've actually changed
+    setDimensions(prevDimensions => {
+      if (
+        prevDimensions.questions.width === questionWidth && 
+        prevDimensions.answers.width === answerWidth
+      ) {
+        return prevDimensions; // No change, return previous state to avoid re-render
+      }
+      
+      return {
+        questions: { width: questionWidth, height: window.innerHeight },
+        answers: { width: answerWidth, height: window.innerHeight },
+      };
     });
-  };
+  }, [isCollapsed]);
 
   const getSplitterConstraints = () => {
     const sidebarWidth = sidebarRef.current

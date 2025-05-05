@@ -1,33 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 const Splitter = ({ onDrag, initialPosition, minPosition, maxPosition, containerOffset }) => {
   const [position, setPosition] = useState(initialPosition);
   const [isDragging, setIsDragging] = useState(false);
 
-  useEffect(() => {
-    const constrainedPosition = Math.max(minPosition, Math.min(maxPosition, initialPosition));
-    setPosition(constrainedPosition);
-    onDrag(constrainedPosition);
-  }, [initialPosition, minPosition, maxPosition, onDrag]);
-
-  const handleMouseDown = (e) => {
-    setIsDragging(true);
-    e.preventDefault();
-  };
-
-  const handleMouseMove = (e) => {
+  // Use useCallback to memoize the handler functions
+  const handleMouseMove = useCallback((e) => {
     if (isDragging) {
       const newPosition = e.clientX - (containerOffset || 0);
       const constrainedPosition = Math.max(minPosition, Math.min(maxPosition, newPosition));
       setPosition(constrainedPosition);
-      onDrag(constrainedPosition);
+      
+      // Only call onDrag when the position actually changes
+      // This prevents unnecessary re-renders
+      if (constrainedPosition !== position) {
+        onDrag(constrainedPosition);
+      }
     }
-  };
+  }, [isDragging, minPosition, maxPosition, containerOffset, onDrag, position]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     setIsDragging(false);
-  };
+  }, []);
 
+  // Initial position setup - only run once on component mount or when props change
+  useEffect(() => {
+    // Only update if initial position changed and is different from current position
+    if (initialPosition !== position) {
+      const constrainedPosition = Math.max(minPosition, Math.min(maxPosition, initialPosition));
+      setPosition(constrainedPosition);
+      
+      // Avoid calling onDrag here, since it can create infinite loops
+      // if onDrag changes state that affects initialPosition
+    }
+  }, [initialPosition, minPosition, maxPosition, position]);
+
+  // Handle mouse events
   useEffect(() => {
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
@@ -37,7 +45,12 @@ const Splitter = ({ onDrag, initialPosition, minPosition, maxPosition, container
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, handleMouseMove]);
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    e.preventDefault();
+  };
 
   return (
     <div
@@ -50,4 +63,4 @@ const Splitter = ({ onDrag, initialPosition, minPosition, maxPosition, container
   );
 };
 
-export default Splitter;
+export default React.memo(Splitter);

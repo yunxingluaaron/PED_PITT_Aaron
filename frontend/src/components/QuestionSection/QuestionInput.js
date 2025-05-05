@@ -1,5 +1,4 @@
-// src/components/QuestionSection/QuestionInput.js
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 const QuestionInput = ({
   value,
@@ -9,11 +8,25 @@ const QuestionInput = ({
   onClear,
   isHistoricalQuestion
 }) => {
-  console.log('🟢 QuestionInput rendered with props:', {
-    value,
-    loading,
-    isHistoricalQuestion
-  });
+  // Use useRef to track previous value to avoid unnecessary console logs
+  const prevProps = useRef({ value, loading, isHistoricalQuestion });
+  
+  // Only log when props actually change
+  useEffect(() => {
+    if (
+      prevProps.current.value !== value ||
+      prevProps.current.loading !== loading ||
+      prevProps.current.isHistoricalQuestion !== isHistoricalQuestion
+    ) {
+      console.log('🟢 QuestionInput props changed:', {
+        value,
+        loading,
+        isHistoricalQuestion
+      });
+      // Update the ref with current values
+      prevProps.current = { value, loading, isHistoricalQuestion };
+    }
+  }, [value, loading, isHistoricalQuestion]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -29,7 +42,6 @@ const QuestionInput = ({
   };
 
   const handleChange = (e) => {
-    console.log('🟢 handleChange called with value:', e.target.value);
     onChange(e.target.value);
   };
 
@@ -79,4 +91,4 @@ const QuestionInput = ({
   );
 };
 
-export default QuestionInput;
+export default React.memo(QuestionInput);
