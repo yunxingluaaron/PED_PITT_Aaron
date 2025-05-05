@@ -52,6 +52,57 @@ export const AnswerSection = ({
 
   const currentVersion = getCurrentVersion();
 
+  const [processingStartTime, setProcessingStartTime] = useState(null);
+  const [processingTime, setProcessingTime] = useState(null);
+
+
+    // Add this useEffect to track the processing time
+  useEffect(() => {
+    // Start timing when question is submitted but answer isn't ready yet
+    if (isGenerating && !loading && processingStartTime === null) {
+      console.log('🕒 Starting processing time tracking');
+      setProcessingStartTime(Date.now());
+      setProcessingTime(null);
+    }
+    
+    // End timing when answer is generated
+    if (!isGenerating && processingStartTime !== null) {
+      const endTime = Date.now();
+      const timeTaken = endTime - processingStartTime;
+      console.log(`🕒 Processing completed in ${timeTaken}ms`);
+      setProcessingTime(timeTaken);
+      setProcessingStartTime(null);
+    }
+  }, [isGenerating, loading]);
+
+  // Add this to reset the timer on conversation reset
+  useEffect(() => {
+    const handleResetConversation = () => {
+      setProcessingTime(null);
+      setProcessingStartTime(null);
+    };
+
+    const answerSectionElement = document.getElementById('answer-section');
+    if (answerSectionElement) {
+      answerSectionElement.addEventListener('resetConversation', handleResetConversation);
+    }
+    
+    window.addEventListener('globalResetConversation', handleResetConversation);
+
+    return () => {
+      if (answerSectionElement) {
+        answerSectionElement.removeEventListener('resetConversation', handleResetConversation);
+      }
+      window.removeEventListener('globalResetConversation', handleResetConversation);
+    };
+  }, []);
+
+  const formatProcessingTime = (ms) => {
+    if (ms === null) return '';
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(2)}s`;
+  };
+
   // Listen for reset conversation event
   useEffect(() => {
     const handleResetConversation = (event) => {
@@ -368,16 +419,34 @@ export const AnswerSection = ({
     <div id="answer-section" className="h-full flex">
       <div className="flex-1 flex flex-col">
         <div className="flex-1 p-4 overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold">VineAI Response</h2>
-            <DropdownMenu
-              options={[
-                { value: 'detailed', label: 'Detailed' },
-                { value: 'simplified', label: 'Simplified' },
-              ]}
-              value={responseMode}
-              onChange={(value) => setResponseMode(value)}
-            />
+          <div className="flex flex-col mb-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold">VineAI Response</h2>
+              <DropdownMenu
+                options={[
+                  { value: 'detailed', label: 'Detailed' },
+                  { value: 'simplified', label: 'Simplified' },
+                ]}
+                value={responseMode}
+                onChange={(value) => setResponseMode(value)}
+              />
+            </div>
+            
+            {/* Processing time indicator */}
+            {(processingTime !== null || isGenerating) && (
+              <div className="mt-1 flex items-center">
+                {isGenerating ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin mr-2 h-3 w-3 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+                    <span className="text-xs text-gray-600">Processing question...</span>
+                  </div>
+                ) : processingTime !== null ? (
+                  <div className="text-xs text-gray-500">
+                    Response generated in {formatProcessingTime(processingTime)}
+                  </div>
+                ) : null}
+              </div>
+            )}
           </div>
           
           {currentParentName && (

@@ -8,13 +8,15 @@ const QuestionSection = ({
   initialQuestion,
   selectedHistoryQuestion,
   initialParentName = '',
-  onNewConversation, // New prop for handling new conversation
+  onNewConversation,
   className
 }) => {
   const [question, setQuestion] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
   const wasSetFromHistory = useRef(false);
   const [parentName, setParentName] = useState(initialParentName);
+  const [processingTime, setProcessingTime] = useState(null);
+  const processingStartTime = useRef(null);
   
   const [dropdownValues, setDropdownValues] = useState({
     tone: 'balanced',
@@ -27,6 +29,32 @@ const QuestionSection = ({
   useEffect(() => {
     console.log('🟡 QuestionSection mounted');
     return () => console.log('🟡 QuestionSection unmounted');
+  }, []);
+
+  // Track processing time when isGenerating changes
+  useEffect(() => {
+    if (isGenerating) {
+      // Start the timer when generation begins
+      processingStartTime.current = Date.now();
+      setProcessingTime(null);
+    } else if (processingStartTime.current !== null && !isGenerating) {
+      // Calculate and display time when generation finishes
+      const endTime = Date.now();
+      const timeTaken = endTime - processingStartTime.current;
+      setProcessingTime(timeTaken);
+      processingStartTime.current = null;
+    }
+  }, [isGenerating]);
+
+  // Reset processing time when starting a new conversation
+  useEffect(() => {
+    const handleConversationReset = () => {
+      setProcessingTime(null);
+      processingStartTime.current = null;
+    };
+    
+    window.addEventListener('conversationReset', handleConversationReset);
+    return () => window.removeEventListener('conversationReset', handleConversationReset);
   }, []);
 
   // Handle selectedHistoryQuestion changes
@@ -73,6 +101,10 @@ const QuestionSection = ({
     }
   
     setLocalLoading(true);
+    // Reset and start timing when submitting a question
+    processingStartTime.current = Date.now();
+    setProcessingTime(null);
+    
     try {
       const responseStyleParameters = {
         tone: dropdownValues.tone,
@@ -89,6 +121,14 @@ const QuestionSection = ({
     } catch (error) {
       console.error('Error submitting question:', error);
       setLocalLoading(false);
+      
+      // End timing on error
+      if (processingStartTime.current !== null) {
+        const endTime = Date.now();
+        const timeTaken = endTime - processingStartTime.current;
+        setProcessingTime(timeTaken);
+        processingStartTime.current = null;
+      }
     }
   }, [dropdownValues, localLoading, onQuestionSubmit, parentName]);
 
@@ -118,6 +158,8 @@ const QuestionSection = ({
     setQuestion('');
     setParentName('');
     wasSetFromHistory.current = false;
+    setProcessingTime(null);
+    processingStartTime.current = null;
     
     // Call the parent's handler
     onNewConversation();
@@ -169,6 +211,13 @@ const QuestionSection = ({
     }
   ];
 
+  // Format processing time for display
+  const formatProcessingTime = (ms) => {
+    if (ms === null) return '';
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(2)}s`;
+  };
+
   // Memoize the onChange handler to avoid recreating it on every render
   const handleQuestionChange = useCallback((newValue) => {
     setQuestion(newValue);
@@ -214,7 +263,25 @@ const QuestionSection = ({
           isHistoricalQuestion={selectedHistoryQuestion?.isFromHistory}
         />
 
-        <p className="mt-2 text-sm text-gray-500">
+        {/* Processing time indicator */}
+        {(isGenerating || processingTime !== null) && (
+          <div className="mt-3 flex items-center">
+            <div className="flex items-center">
+              {isGenerating ? (
+                <>
+                  <div className="animate-spin mr-2 h-4 w-4 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+                  <span className="text-sm text-gray-600">Processing...</span>
+                </>
+              ) : processingTime !== null ? (
+                <div className="text-sm text-gray-600">
+                  <span className="font-medium">Processing time:</span> {formatProcessingTime(processingTime)}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+
+        <p className="mt-4 text-sm text-gray-500">
           Adjust these options to customize how the response is written and formatted.
         </p>
 
