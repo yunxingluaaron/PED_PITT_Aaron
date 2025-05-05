@@ -101,7 +101,39 @@ const DashboardLayout = () => {
     }
   };
 
-  const handleQuestionSubmit = async (questionData) => {
+  // Handle starting a new conversation
+  const handleNewConversation = useCallback(() => {
+    console.log('🔵 Starting new conversation');
+    
+    // Clear all relevant state
+    setSelectedHistoryQuestion(null);
+    setCurrentAnswer(null);
+    setCurrentQuestion('');
+    setCurrentQuestionId(null);
+    setParentName('');
+    setIsGenerating(false);
+    
+    // Notify AnswerSection component to reset
+    const answerSection = document.getElementById('answer-section');
+    if (answerSection) {
+      // Make sure the event is directly dispatched on the answersection element
+      console.log('🔵 Dispatching resetConversation event to AnswerSection');
+      
+      // Create and dispatch the event
+      const resetEvent = new CustomEvent('resetConversation', {
+        detail: { timestamp: Date.now() }
+      });
+      
+      answerSection.dispatchEvent(resetEvent);
+    } else {
+      console.warn('🔵 Could not find answer-section element');
+    }
+    
+    // Trigger any additional reset actions
+    window.dispatchEvent(new Event('conversationReset'));
+  }, []);
+
+  const handleQuestionSubmit = useCallback(async (questionData) => {
     console.log('🔵 handleQuestionSubmit called:', {
       questionData,
       isHistorical: selectedHistoryQuestion?.isFromHistory,
@@ -153,9 +185,9 @@ const DashboardLayout = () => {
       console.error('Error submitting question:', error);
       setIsGenerating(false);
     }
-  };
+  }, [parentName, selectedHistoryQuestion]);
 
-  const handleAnswerGenerated = (answer) => {
+  const handleAnswerGenerated = useCallback((answer) => {
     console.log('🔵 handleAnswerGenerated called with:', answer);
     if (!answer.isHistoricalAnswer) {
       setCurrentAnswer({
@@ -173,23 +205,23 @@ const DashboardLayout = () => {
       }
       window.dispatchEvent(new Event('questionAdded'));
     }
-  };
+  }, []);
 
-  const handleGenerationError = () => {
+  const handleGenerationError = useCallback(() => {
     setIsGenerating(false);
-  };
+  }, []);
 
-  const toggleSidebar = () => {
+  const toggleSidebar = useCallback(() => {
     setIsCollapsed(!isCollapsed);
-  };
+  }, [isCollapsed]);
 
-  const handleResize = (section) => (e, { size }) => {
+  const handleResize = useCallback((section) => (e, { size }) => {
     console.log(`🔄 Resizing ${section}:`, size);
     setDimensions((prev) => ({
       ...prev,
       [section]: { width: prev[section].width, height: size.height },
     }));
-  };
+  }, []);
 
   const handleSplitterDrag = useCallback((newPosition) => {
     const sidebarWidth = sidebarRef.current
@@ -217,7 +249,7 @@ const DashboardLayout = () => {
     });
   }, [isCollapsed]);
 
-  const getSplitterConstraints = () => {
+  const getSplitterConstraints = useCallback(() => {
     const sidebarWidth = sidebarRef.current
       ? sidebarRef.current.offsetWidth
       : isCollapsed
@@ -228,7 +260,7 @@ const DashboardLayout = () => {
       minPosition: 300,
       maxPosition: availableWidth - 300,
     };
-  };
+  }, [isCollapsed]);
 
   return (
     <div className="flex min-h-screen overflow-hidden bg-gray-50">
@@ -263,6 +295,7 @@ const DashboardLayout = () => {
                 initialQuestion={selectedHistoryQuestion?.content}
                 selectedHistoryQuestion={selectedHistoryQuestion}
                 initialParentName={parentName}
+                onNewConversation={handleNewConversation}
                 className="flex-1 overflow-auto"
               />
             </div>

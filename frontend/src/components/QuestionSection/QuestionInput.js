@@ -60,7 +60,7 @@ const QuestionInput = ({
           loading ? 'bg-gray-50' : 'bg-white'
         } ${isHistoricalQuestion ? 'border-blue-300' : 'border-gray-300'}`}
         disabled={loading}
-        rows={4}
+        rows={12}
       />
       <div className="absolute bottom-3 right-3 flex gap-2">
         {value && (

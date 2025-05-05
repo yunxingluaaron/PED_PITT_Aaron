@@ -46,10 +46,52 @@ export const AnswerSection = ({
   const [showComparison, setShowComparison] = useState(false);
   const [currentParentName, setCurrentParentName] = useState(parentName || '');
   const [responseMode, setResponseMode] = useState('simplified');
+  const [isNewConversation, setIsNewConversation] = useState(!question && !currentAnswer);
   const processedQuestionRef = useRef('');
   const initialLoadDone = useRef(false);
 
   const currentVersion = getCurrentVersion();
+
+  // Listen for reset conversation event
+  useEffect(() => {
+    const handleResetConversation = (event) => {
+      console.log('🔴 AnswerSection - Conversation reset received', event);
+      
+      // Clear answer state
+      setEditorContent('');
+      setOriginalContent('');
+      setIsNewConversation(true);
+      
+      // Any other reset logic specific to AnswerSection
+      console.log('🔴 AnswerSection - Conversation reset complete');
+    };
+  
+    // Add event listener to the DOM element
+    const answerSectionElement = document.getElementById('answer-section');
+    if (answerSectionElement) {
+      console.log('🔴 AnswerSection - Adding resetConversation event listener');
+      
+      // Use addEventListener with a named function so we can remove it later
+      answerSectionElement.addEventListener('resetConversation', handleResetConversation);
+      
+      // Log that the listener was added (helps with debugging)
+      console.log('🔴 AnswerSection - Event listener added');
+    } else {
+      console.warn('🔴 AnswerSection - Could not find answer-section element');
+    }
+  
+    // Cleanup function is important to prevent memory leaks
+    return () => {
+      if (answerSectionElement) {
+        console.log('🔴 AnswerSection - Removing resetConversation event listener');
+        answerSectionElement.removeEventListener('resetConversation', handleResetConversation);
+      }
+    };
+  }, []); // Empty dependency array means this runs once on mount
+  
+  // Add this debugging code right in the render function, near the top
+  // (For debugging purposes, remove in production)
+  console.log('🔴 AnswerSection rendering with isNewConversation:', isNewConversation);
 
   useEffect(() => {
     if (parentName !== undefined && parentName !== currentParentName) {
@@ -65,6 +107,9 @@ export const AnswerSection = ({
     const handleNewQuestion = async (event) => {
       const { question, parameters, parentName: eventParentName } = event.detail;
       console.log('🔄 Received new question event:', event.detail);
+      
+      // Set to false since we're now getting a question
+      setIsNewConversation(false);
       
       if (eventParentName !== undefined) {
         setCurrentParentName(eventParentName);
@@ -112,11 +157,20 @@ export const AnswerSection = ({
       content = responseMode === 'detailed' 
         ? (currentAnswer.detailed_response || 'Detailed response not available')
         : (currentAnswer.simple_response || currentAnswer.response || 'Simplified response not available');
+      
+      // If we have an answer, we're not in a new conversation
+      setIsNewConversation(false);
     } else if (answer) {
       console.log('🤖 Processing new AI answer');
       content = responseMode === 'detailed' 
         ? (detailedResponse || 'Detailed response not available')
         : (simpleResponse || 'Simplified response not available');
+      
+      // If we have an answer, we're not in a new conversation
+      setIsNewConversation(false);
+    } else if (isNewConversation) {
+      // Use our welcoming message instead of "No response available"
+      content = ''; // We'll handle this in the render logic
     } else {
       content = 'No response available';
     }
@@ -149,7 +203,7 @@ export const AnswerSection = ({
         parent_name: currentParentName
       });
     }
-  }, [answer, detailedResponse, simpleResponse, responseMode, currentAnswer, versions, addVersion, onSourcesUpdate, currentParentName, updateParentName]);
+  }, [answer, detailedResponse, simpleResponse, responseMode, currentAnswer, versions, addVersion, onSourcesUpdate, currentParentName, updateParentName, isNewConversation]);
 
   useEffect(() => {
     const selectedVersion = getCurrentVersion();
@@ -179,6 +233,9 @@ export const AnswerSection = ({
         
         console.log('🔄 Processing new question:', question);
         processedQuestionRef.current = question.question;
+        
+        // We're processing a question, so we're not in a new conversation
+        setIsNewConversation(false);
         
         try {
           const options = selectedHistoryQuestion?.isFromHistory ? {
@@ -279,6 +336,30 @@ export const AnswerSection = ({
     return tempDiv.textContent || tempDiv.innerText || '';
   }, []);
 
+  // Render a welcome message for new conversations
+  const renderWelcomeMessage = () => {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center p-8 max-w-md bg-blue-50 rounded-lg shadow-sm">
+          <h3 className="text-xl font-semibold text-blue-700 mb-3">
+            Welcome to a New Conversation
+          </h3>
+          <p className="text-gray-700 mb-4">
+            Please enter your question in the input area to get a response from the AI.
+          </p>
+          <div className="text-gray-600 text-sm">
+            <p className="mb-2">Tips:</p>
+            <ul className="text-left list-disc pl-5 space-y-1">
+              <li>Be specific with your questions for more accurate answers</li>
+              <li>You can provide context by mentioning relevant details</li>
+              <li>Enter a parent name if needed for family-related questions</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (error) {
     return <div className="text-red-500 p-4">Error: {error}</div>;
   }
@@ -314,6 +395,8 @@ export const AnswerSection = ({
                 <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
                 <div className="h-4 bg-gray-200 rounded w-1/2"></div>
               </div>
+            ) : isNewConversation ? (
+              renderWelcomeMessage()
             ) : (
               <Editor
                 value={editorContent}
@@ -334,6 +417,7 @@ export const AnswerSection = ({
           metadata={metadata}
           onCopy={handleCopy}
           parentName={currentParentName}
+          disabled={isNewConversation} // Disable action bar for new conversations
         />
         {showComparison && (
           <VersionComparison

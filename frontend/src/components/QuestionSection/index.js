@@ -8,6 +8,7 @@ const QuestionSection = ({
   initialQuestion,
   selectedHistoryQuestion,
   initialParentName = '',
+  onNewConversation, // New prop for handling new conversation
   className
 }) => {
   const [question, setQuestion] = useState('');
@@ -111,6 +112,17 @@ const QuestionSection = ({
     }
   }, [dropdownValues, onQuestionSubmit, parentName, selectedHistoryQuestion]);
 
+  // Handler for the new conversation button
+  const handleNewConversation = useCallback(() => {
+    // Clear the local state
+    setQuestion('');
+    setParentName('');
+    wasSetFromHistory.current = false;
+    
+    // Call the parent's handler
+    onNewConversation();
+  }, [onNewConversation]);
+
   const handleDropdownChange = useCallback((menu) => (e) => {
     setDropdownValues(prev => ({
       ...prev,
@@ -167,7 +179,16 @@ const QuestionSection = ({
       <div className={`p-4 transition-all duration-200 ${
         localLoading || isGenerating ? 'opacity-50' : 'opacity-100'
       }`}>
-        <h2 className="text-xl font-bold mb-4">Questions Enter</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">Questions Enter</h2>
+          <button
+            onClick={handleNewConversation}
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200"
+            disabled={localLoading || isGenerating}
+          >
+            New Conversation
+          </button>
+        </div>
         
         <div className="mb-4 flex items-center gap-4">
           <label htmlFor="parentName" className="text-sm font-medium text-gray-700 whitespace-nowrap min-w-[100px]">
