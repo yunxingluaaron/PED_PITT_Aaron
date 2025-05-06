@@ -1,3 +1,4 @@
+// src\components\AnswerSection\index.js
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Editor from './components/Editor';
 import ActionBar from './components/ActionBar';
@@ -16,6 +17,7 @@ export const AnswerSection = ({
   currentAnswer,
   parentName
 }) => {
+
   const {
     loading,
     error,
@@ -28,18 +30,9 @@ export const AnswerSection = ({
     questionId,
     conversationId,
     generateAnswerFromQuestion,
-    updateParentName
+    updateParentName,
+    clearAnswer
   } = useAnswerGeneration();
-
-  const {
-    versions,
-    currentVersionId,
-    setCurrentVersionId,
-    addVersion,
-    getCurrentVersion,
-    toggleLike,
-    toggleBookmark,
-  } = useVersionHistory(questionId || selectedHistoryQuestion?.id);
 
   const [editorContent, setEditorContent] = useState('');
   const [originalContent, setOriginalContent] = useState('');
@@ -50,10 +43,25 @@ export const AnswerSection = ({
   const processedQuestionRef = useRef('');
   const initialLoadDone = useRef(false);
 
-  const currentVersion = getCurrentVersion();
+  const versionHistoryArg = isNewConversation ? null : (questionId || selectedHistoryQuestion?.id);
 
+
+    
+  const {
+    versions,
+    currentVersionId,
+    setCurrentVersionId,
+    addVersion,
+    getCurrentVersion,
+    toggleLike,
+    toggleBookmark,
+    reset: resetVersionHistory
+  } = useVersionHistory(isNewConversation ? null : (questionId || selectedHistoryQuestion?.id));
+
+  const currentVersion = getCurrentVersion();
   const [processingStartTime, setProcessingStartTime] = useState(null);
   const [processingTime, setProcessingTime] = useState(null);
+
 
 
     // Add this useEffect to track the processing time
@@ -104,41 +112,36 @@ export const AnswerSection = ({
   };
 
   // Listen for reset conversation event
+
   useEffect(() => {
     const handleResetConversation = (event) => {
       console.log('🔴 AnswerSection - Conversation reset received', event);
-      
-      // Clear answer state
       setEditorContent('');
       setOriginalContent('');
       setIsNewConversation(true);
-      
-      // Any other reset logic specific to AnswerSection
+      setCurrentParentName('');
+      setResponseMode('simplified');
+      clearAnswer(); // 清空 useAnswerGeneration 的状态
+      setCurrentVersionId(null); // 重置版本选择
+      resetVersionHistory(); // 应调用 useVersionHistory 的 reset
       console.log('🔴 AnswerSection - Conversation reset complete');
     };
-  
-    // Add event listener to the DOM element
+
     const answerSectionElement = document.getElementById('answer-section');
     if (answerSectionElement) {
       console.log('🔴 AnswerSection - Adding resetConversation event listener');
-      
-      // Use addEventListener with a named function so we can remove it later
       answerSectionElement.addEventListener('resetConversation', handleResetConversation);
-      
-      // Log that the listener was added (helps with debugging)
-      console.log('🔴 AnswerSection - Event listener added');
     } else {
       console.warn('🔴 AnswerSection - Could not find answer-section element');
     }
-  
-    // Cleanup function is important to prevent memory leaks
+
     return () => {
       if (answerSectionElement) {
         console.log('🔴 AnswerSection - Removing resetConversation event listener');
         answerSectionElement.removeEventListener('resetConversation', handleResetConversation);
       }
     };
-  }, []); // Empty dependency array means this runs once on mount
+  }, [clearAnswer, resetVersionHistory]);
   
   // Add this debugging code right in the render function, near the top
   // (For debugging purposes, remove in production)
@@ -194,34 +197,34 @@ export const AnswerSection = ({
     }
   }, [generateAnswerFromQuestion, onAnswerGenerated, currentParentName]);
 
+// AnswerSection.js
   useEffect(() => {
     console.log('🔄 Response mode changed to:', responseMode);
     console.log('📜 Current answer:', currentAnswer);
     console.log('🤖 New answer data:', { answer, detailedResponse, simpleResponse });
 
-    let content;
+    let content = '';
     if (currentAnswer?.isHistoricalAnswer) {
       console.log('📜 Processing historical answer');
-      console.log('🔍 currentAnswer.simple_response:', currentAnswer.simple_response);
-      console.log('🔍 currentAnswer.detailed_response:', currentAnswer.detailed_response);
-      console.log('🔍 currentAnswer.response:', currentAnswer.response);
-      content = responseMode === 'detailed' 
+      content = responseMode === 'detailed'
         ? (currentAnswer.detailed_response || 'Detailed response not available')
         : (currentAnswer.simple_response || currentAnswer.response || 'Simplified response not available');
-      
-      // If we have an answer, we're not in a new conversation
       setIsNewConversation(false);
-    } else if (answer) {
-      console.log('🤖 Processing new AI answer');
-      content = responseMode === 'detailed' 
+    } else if (currentAnswer && !isGenerating) {
+      console.log('🤖 Processing new answer from currentAnswer');
+      content = responseMode === 'detailed'
+        ? (currentAnswer.detailed_response || 'Detailed response not available')
+        : (currentAnswer.simple_response || currentAnswer.response || 'Simplified response not available');
+      setIsNewConversation(false);
+    } else if (answer && !isGenerating) {
+      console.log('🤖 Processing new AI answer from useAnswerGeneration');
+      content = responseMode === 'detailed'
         ? (detailedResponse || 'Detailed response not available')
-        : (simpleResponse || 'Simplified response not available');
-      
-      // If we have an answer, we're not in a new conversation
+        : (simpleResponse || detailedResponse || 'Simplified response not available');
       setIsNewConversation(false);
-    } else if (isNewConversation) {
-      // Use our welcoming message instead of "No response available"
-      content = ''; // We'll handle this in the render logic
+    } else if (isNewConversation || (!currentAnswer && !answer)) {
+      content = '';
+      setIsNewConversation(true);
     } else {
       content = 'No response available';
     }
@@ -237,7 +240,6 @@ export const AnswerSection = ({
           updateParentName(currentAnswer.parent_name);
         }
       }
-      
       if (!initialLoadDone.current && currentAnswer.isHistoricalAnswer) {
         initialLoadDone.current = true;
       } else if (!currentAnswer.isHistoricalAnswer && content && !versions.some(v => v.content === content)) {
@@ -245,7 +247,6 @@ export const AnswerSection = ({
           parent_name: currentAnswer?.parent_name || currentParentName
         });
       }
-      
       if (onSourcesUpdate) {
         onSourcesUpdate(currentAnswer.sources || []);
       }
@@ -254,7 +255,7 @@ export const AnswerSection = ({
         parent_name: currentParentName
       });
     }
-  }, [answer, detailedResponse, simpleResponse, responseMode, currentAnswer, versions, addVersion, onSourcesUpdate, currentParentName, updateParentName, isNewConversation]);
+  }, [answer, detailedResponse, simpleResponse, responseMode, currentAnswer, versions, addVersion, onSourcesUpdate, currentParentName, updateParentName, isNewConversation, isGenerating]);
 
   useEffect(() => {
     const selectedVersion = getCurrentVersion();

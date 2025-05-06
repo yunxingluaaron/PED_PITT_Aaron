@@ -1,3 +1,4 @@
+//src\components\AnswerSection\hooks\useAnswerGeneration.js
 import { useState, useCallback } from 'react';
 import { generateAnswer } from '../../../services/questionApi';
 
@@ -14,6 +15,7 @@ export const useAnswerGeneration = () => {
   const [questionId, setQuestionId] = useState(null);
   const [parentName, setParentName] = useState('');
 
+  // useAnswerGeneration.js
   const generateAnswerFromQuestion = useCallback(async (question, options = {}) => {
     setLoading(true);
     setError(null);
@@ -46,26 +48,39 @@ export const useAnswerGeneration = () => {
           professionalStyle: 'clinicallyBalanced'
         }
       };
-      
-      const response = await generateAnswer(requestData);
 
-      // 修改：分别存储 detailed_response 和 simple_response
-      setAnswer(response.detailed_response); // 保持原有逻辑兼容性
-      setDetailedResponse(response.detailed_response);
-      setSimpleResponse(response.simple_response || response.detailed_response); // 回退到 detailed_response
-      setSources(response.sources || []);
-      setRelationships(response.relationships || []);
-      setConversationId(response.conversation_id);
+      const response = await generateAnswer(requestData);
+      console.log('🔍 API Response:', JSON.stringify(response, null, 2));
+
+      // 确保 simple_response 和 detailed_response 有默认值
+      const normalizedResponse = {
+        ...response,
+        simple_response: response.simple_response || response.detailed_response || 'Simplified response not available',
+        detailed_response: response.detailed_response || 'Detailed response not available',
+        sources: response.sources || [],
+        relationships: response.relationships || [],
+        conversation_id: response.conversation_id || conversationId,
+        metadata: response.metadata || {},
+        question_id: response.question_id || null,
+        parent_name: response.parent_name || options.parent_name || parentName
+      };
+
+      setAnswer(normalizedResponse.detailed_response);
+      setDetailedResponse(normalizedResponse.detailed_response);
+      setSimpleResponse(normalizedResponse.simple_response);
+      setSources(normalizedResponse.sources);
+      setRelationships(normalizedResponse.relationships);
+      setConversationId(normalizedResponse.conversation_id);
       setMetadata({
-        ...response.metadata,
+        ...normalizedResponse.metadata,
         parameters: options.parameters,
         question,
-        parent_name: options.parent_name || parentName || response.parent_name
+        parent_name: normalizedResponse.parent_name
       });
-      setQuestionId(response.question_id);
+      setQuestionId(normalizedResponse.question_id);
 
-      if (response.parent_name) {
-        setParentName(response.parent_name);
+      if (normalizedResponse.parent_name) {
+        setParentName(normalizedResponse.parent_name);
       }
 
       if (!options.isHistoricalAnswer) {
@@ -73,18 +88,17 @@ export const useAnswerGeneration = () => {
           detail: {
             parameters: options.parameters,
             question,
-            response: response.detailed_response,
-            parent_name: options.parent_name || parentName || response.parent_name
+            response: normalizedResponse.detailed_response,
+            parent_name: normalizedResponse.parent_name
           }
         }));
       }
 
       return {
-        ...response,
+        ...normalizedResponse,
         isHistoricalAnswer: options.isHistoricalAnswer,
         parameters: options.parameters,
-        originalQuestion: question,
-        parent_name: options.parent_name || parentName || response.parent_name
+        originalQuestion: question
       };
     } catch (err) {
       console.error('❌ Error generating answer:', err);
