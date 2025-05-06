@@ -13,6 +13,7 @@ from openai import OpenAI
 from sentence_transformers import SentenceTransformer
 from app import real_conversation_analysis as rca
 
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
@@ -47,6 +48,11 @@ class ElasticsearchQuerier:
             self.openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
             if not os.getenv("OPENAI_API_KEY"):
                 raise ValueError("OpenAI API key not found in environment variables")
+
+            self.grok_client = OpenAI(api_key=os.getenv("XAI_API_KEY"),
+            base_url="https://api.x.ai/v1")
+            if not os.getenv("XAI_API_KEY"):
+                raise ValueError("xAI API key not found in environment variables")
                     
             self.index_name = index_name
             logger.info(f"Successfully initialized ElasticsearchQuerier with index: {index_name}")
@@ -527,20 +533,22 @@ class ElasticsearchQuerier:
             messages.append(user_message)
             temperature = 0.3
 
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4-turbo",
+            # Call the Grok API
+            logger.info("Calling Grok API to generate response")
+            completion = self.grok_client.chat.completions.create(
+                model="grok-3-latest",
                 messages=messages,
                 temperature=temperature
             )
             
-            detailed_analysis = response.choices[0].message.content
+            response_text = completion.choices[0].message.content
+            detailed_analysis = response_text
             logger.info(f"Generated detailed response with style parameters: {filtered_parameters}")
             
             simple_analysis = None
             if self.conversation_data_loaded:
                 logger.info("Conversation data is loaded. Attempting to retrieve similar conversations...")
                 try:
-                    # Pass df and question_embeddings explicitly
                     conversation_examples = rca.retrieve_conversations(
                         query=query,
                         df=self.df,
@@ -553,12 +561,12 @@ class ElasticsearchQuerier:
                     
                     logger.info("Generating response using rca.generate_response")
                     simple_analysis = rca.generate_response(
-                                        query=query,
-                                        textbook_info=detailed_analysis,
-                                        examples=conversation_examples,
-                                        language="neutral",
-                                        parent_name=parent_name  # Pass parent_name
-                                    )
+                        query=query,
+                        textbook_info=detailed_analysis,
+                        examples=conversation_examples,
+                        language="neutral",
+                        parent_name=parent_name
+                    )
                     
                     logger.info("Successfully generated response using real conversation analysis")
                     
@@ -568,9 +576,9 @@ class ElasticsearchQuerier:
                     simple_analysis = "Error generating simplified analysis based on real conversations."
             else:
                 logger.warning("Conversation data not loaded. Skipping real conversation analysis.")
-            
+                
         except Exception as e:
-            logger.error(f"Error in OpenAI analysis: {str(e)}")
+            logger.error(f"Grok API error: {str(e)}")
             logger.error(f"Error traceback: {traceback.format_exc()}")
             detailed_analysis = "Error generating analysis. Please try again."
             simple_analysis = None
