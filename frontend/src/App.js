@@ -23,9 +23,10 @@ const DashboardLayout = () => {
   const [currentQuestionId, setCurrentQuestionId] = useState(null);
   const [parentName, setParentName] = useState('');
   const [dimensions, setDimensions] = useState({
-    questions: { width: 400, height: window.innerHeight },
-    answers: { width: 400, height: window.innerHeight },
+    questions: { width: window.innerWidth * 0.5, height: window.innerHeight }, // 初始宽度为屏幕宽度的50%
+    answers: { width: window.innerWidth * 0.5, height: window.innerHeight },  // 剩余宽度
   });
+
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 768);
   const sidebarRef = useRef(null);
   const mainContainerRef = useRef(null);
@@ -38,7 +39,7 @@ const DashboardLayout = () => {
         ? 60
         : 200;
       const availableWidth = window.innerWidth - sidebarWidth;
-      const questionWidth = Math.min(dimensions.questions.width, availableWidth * 0.7);
+      const questionWidth = Math.min(availableWidth * 0.5, availableWidth - 300); // 调整为50%比例
       const answerWidth = availableWidth - questionWidth;
       setDimensions((prev) => ({
         questions: { width: questionWidth, height: window.innerHeight },
