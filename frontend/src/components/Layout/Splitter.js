@@ -4,38 +4,33 @@ const Splitter = ({ onDrag, initialPosition, minPosition, maxPosition, container
   const [position, setPosition] = useState(initialPosition);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Use useCallback to memoize the handler functions
-  const handleMouseMove = useCallback((e) => {
-    if (isDragging) {
-      const newPosition = e.clientX - (containerOffset || 0);
-      const constrainedPosition = Math.max(minPosition, Math.min(maxPosition, newPosition));
-      setPosition(constrainedPosition);
-      
-      // Only call onDrag when the position actually changes
-      // This prevents unnecessary re-renders
-      if (constrainedPosition !== position) {
+  // 验证传入的 props 是否有效
+  useEffect(() => {
+    if (typeof initialPosition !== 'number' || typeof minPosition !== 'number' || typeof maxPosition !== 'number') {
+      console.error('Invalid Splitter props:', { initialPosition, minPosition, maxPosition });
+    }
+    if (initialPosition < minPosition || initialPosition > maxPosition) {
+      console.warn('Initial position is out of bounds, clamping to valid range');
+      setPosition(Math.max(minPosition, Math.min(maxPosition, initialPosition)));
+    }
+  }, [initialPosition, minPosition, maxPosition]);
+
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (isDragging) {
+        const newPosition = e.clientX - (containerOffset || 0);
+        const constrainedPosition = Math.max(minPosition, Math.min(maxPosition, newPosition));
+        setPosition(constrainedPosition);
         onDrag(constrainedPosition);
       }
-    }
-  }, [isDragging, minPosition, maxPosition, containerOffset, onDrag, position]);
+    },
+    [isDragging, minPosition, maxPosition, containerOffset, onDrag]
+  );
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
   }, []);
 
-  // Initial position setup - only run once on component mount or when props change
-  useEffect(() => {
-    // Only update if initial position changed and is different from current position
-    if (initialPosition !== position) {
-      const constrainedPosition = Math.max(minPosition, Math.min(maxPosition, initialPosition));
-      setPosition(constrainedPosition);
-      
-      // Avoid calling onDrag here, since it can create infinite loops
-      // if onDrag changes state that affects initialPosition
-    }
-  }, [initialPosition, minPosition, maxPosition, position]);
-
-  // Handle mouse events
   useEffect(() => {
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);

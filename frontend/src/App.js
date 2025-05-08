@@ -23,8 +23,8 @@ const DashboardLayout = () => {
   const [currentQuestionId, setCurrentQuestionId] = useState(null);
   const [parentName, setParentName] = useState('');
   const [dimensions, setDimensions] = useState({
-    questions: { width: window.innerWidth * 0.5, height: window.innerHeight }, // 初始宽度为屏幕宽度的50%
-    answers: { width: window.innerWidth * 0.5, height: window.innerHeight },  // 剩余宽度
+    questions: { width: window.innerWidth * 0.5, height: window.innerHeight },
+    answers: { width: window.innerWidth * 0.5, height: window.innerHeight },
   });
 
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 768);
@@ -39,12 +39,12 @@ const DashboardLayout = () => {
         ? 60
         : 200;
       const availableWidth = window.innerWidth - sidebarWidth;
-      const questionWidth = Math.min(availableWidth * 0.5, availableWidth - 300); // 调整为50%比例
+      const questionWidth = Math.min(availableWidth * 0.5, availableWidth - 300);
       const answerWidth = availableWidth - questionWidth;
-      setDimensions((prev) => ({
+      setDimensions({
         questions: { width: questionWidth, height: window.innerHeight },
         answers: { width: answerWidth, height: window.innerHeight },
-      }));
+      });
       setIsSmallScreen(window.innerWidth < 768);
       if (window.innerWidth < 768) {
         setIsCollapsed(true);
@@ -55,7 +55,7 @@ const DashboardLayout = () => {
     updateDimensions();
 
     return () => window.removeEventListener('resize', updateDimensions);
-  }, [isCollapsed, dimensions.questions.width]);
+  }, [isCollapsed]);
 
   useEffect(() => {
     console.log('🔄 selectedHistoryQuestion changed:', selectedHistoryQuestion);
@@ -85,14 +85,14 @@ const DashboardLayout = () => {
         metadata: question.response_metadata || {},
         isHistoricalAnswer: true,
         parent_name: question.parent_name,
-        sources: question.source_data || []
+        sources: question.source_data || [],
       });
       setCurrentQuestion(question.content);
       setSelectedHistoryQuestion({
         ...question,
         simple_response: question.simple_response || question.response || 'Simplified response not available',
         detailed_response: question.detailed_response || 'Detailed response not available',
-        response: question.simple_response || question.response || 'Simplified response not available'
+        response: question.simple_response || question.response || 'Simplified response not available',
       });
       setCurrentQuestionId(question.id);
       if (question.parent_name) {
@@ -102,91 +102,84 @@ const DashboardLayout = () => {
     }
   };
 
-  // Handle starting a new conversation
   const handleNewConversation = useCallback(() => {
     console.log('🔵 Starting new conversation');
-    
-    // Clear all relevant state
     setSelectedHistoryQuestion(null);
     setCurrentAnswer(null);
     setCurrentQuestion('');
     setCurrentQuestionId(null);
     setParentName('');
     setIsGenerating(false);
-    
-    // Notify AnswerSection component to reset
+
     const answerSection = document.getElementById('answer-section');
     if (answerSection) {
-      // Make sure the event is directly dispatched on the answersection element
       console.log('🔵 Dispatching resetConversation event to AnswerSection');
-      
-      // Create and dispatch the event
       const resetEvent = new CustomEvent('resetConversation', {
-        detail: { timestamp: Date.now() }
+        detail: { timestamp: Date.now() },
       });
-      
       answerSection.dispatchEvent(resetEvent);
     } else {
       console.warn('🔵 Could not find answer-section element');
     }
-    
-    // Trigger any additional reset actions
     window.dispatchEvent(new Event('conversationReset'));
   }, []);
 
-  const handleQuestionSubmit = useCallback(async (questionData) => {
-    console.log('🔵 handleQuestionSubmit called:', {
-      questionData,
-      isHistorical: selectedHistoryQuestion?.isFromHistory,
-      parentName: questionData.parentName,
-    });
+  const handleQuestionSubmit = useCallback(
+    async (questionData) => {
+      console.log('🔵 handleQuestionSubmit called:', {
+        questionData,
+        isHistorical: selectedHistoryQuestion?.isFromHistory,
+        parentName: questionData.parentName,
+      });
 
-    if (questionData.parentName !== undefined) {
-      setParentName(questionData.parentName);
-    }
-
-    if (questionData.clearOnly) {
-      setSelectedHistoryQuestion(null);
-      setCurrentAnswer(null);
-      setCurrentQuestionId(null);
-      if (questionData.clearParentName) {
-        setParentName('');
+      if (questionData.parentName !== undefined) {
+        setParentName(questionData.parentName);
       }
-      return;
-    }
 
-    if (
-      selectedHistoryQuestion?.isFromHistory &&
-      questionData.question === selectedHistoryQuestion.content
-    ) {
-      console.log('🔵 Skipping submission for historical question');
-      return;
-    }
-
-    try {
-      setIsGenerating(true);
-      setCurrentQuestion(questionData.question);
-      setSelectedHistoryQuestion(null);
-      setCurrentAnswer(null);
-      setCurrentQuestionId(null);
-
-      const answerSection = document.getElementById('answer-section');
-      if (answerSection) {
-        const enhancedQuestionData = {
-          ...questionData,
-          parentName: questionData.parentName || parentName,
-        };
-        answerSection.dispatchEvent(
-          new CustomEvent('newQuestion', {
-            detail: enhancedQuestionData,
-          })
-        );
+      if (questionData.clearOnly) {
+        setSelectedHistoryQuestion(null);
+        setCurrentAnswer(null);
+        setCurrentQuestionId(null);
+        if (questionData.clearParentName) {
+          setParentName('');
+        }
+        return;
       }
-    } catch (error) {
-      console.error('Error submitting question:', error);
-      setIsGenerating(false);
-    }
-  }, [parentName, selectedHistoryQuestion]);
+
+      if (
+        selectedHistoryQuestion?.isFromHistory &&
+        questionData.question === selectedHistoryQuestion.content
+      ) {
+        console.log('🔵 Skipping submission for historical question');
+        return;
+      }
+
+      try {
+        setIsGenerating(true);
+        setCurrentQuestion(questionData.question);
+        setSelectedHistoryQuestion(null);
+        setCurrentAnswer(null);
+        setCurrentQuestionId(null);
+
+        const answerSection = document.getElementById('answer-section');
+        if (answerSection) {
+          const enhancedQuestionData = {
+            ...questionData,
+            parentName: questionData.parentName || parentName,
+          };
+          answerSection.dispatchEvent(
+            new CustomEvent('newQuestion', {
+              detail: enhancedQuestionData,
+            })
+          );
+        }
+      } catch (error) {
+        console.error('Error submitting question:', error);
+        setIsGenerating(false);
+      }
+    },
+    [parentName, selectedHistoryQuestion]
+  );
 
   const handleAnswerGenerated = useCallback((answer) => {
     console.log('🔵 handleAnswerGenerated called with:', answer);
@@ -195,7 +188,7 @@ const DashboardLayout = () => {
         ...answer,
         simple_response: answer.simple_response || answer.response || 'Simplified response not available',
         detailed_response: answer.detailed_response || 'Detailed response not available',
-        response: answer.simple_response || answer.response || 'Simplified response not available'
+        response: answer.simple_response || answer.response || 'Simplified response not available',
       });
       setIsGenerating(false);
       if (answer.id) {
@@ -216,39 +209,44 @@ const DashboardLayout = () => {
     setIsCollapsed(!isCollapsed);
   }, [isCollapsed]);
 
-  const handleResize = useCallback((section) => (e, { size }) => {
-    console.log(`🔄 Resizing ${section}:`, size);
-    setDimensions((prev) => ({
-      ...prev,
-      [section]: { width: prev[section].width, height: size.height },
-    }));
-  }, []);
+  const handleResize = useCallback(
+    (section) => (e, { size }) => {
+      console.log(`🔄 Resizing ${section}:`, size);
+      setDimensions((prev) => ({
+        ...prev,
+        [section]: { width: prev[section].width, height: size.height },
+      }));
+    },
+    []
+  );
 
-  const handleSplitterDrag = useCallback((newPosition) => {
-    const sidebarWidth = sidebarRef.current
-      ? sidebarRef.current.offsetWidth
-      : isCollapsed
-      ? 60
-      : 200;
-    const availableWidth = window.innerWidth - sidebarWidth;
-    const questionWidth = Math.max(300, Math.min(newPosition, availableWidth - 300));
-    const answerWidth = availableWidth - questionWidth;
-    
-    // Only update dimensions if they've actually changed
-    setDimensions(prevDimensions => {
-      if (
-        prevDimensions.questions.width === questionWidth && 
-        prevDimensions.answers.width === answerWidth
-      ) {
-        return prevDimensions; // No change, return previous state to avoid re-render
-      }
-      
-      return {
-        questions: { width: questionWidth, height: window.innerHeight },
-        answers: { width: answerWidth, height: window.innerHeight },
-      };
-    });
-  }, [isCollapsed]);
+  const handleSplitterDrag = useCallback(
+    (newPosition) => {
+      const sidebarWidth = sidebarRef.current
+        ? sidebarRef.current.offsetWidth
+        : isCollapsed
+        ? 60
+        : 200;
+      const availableWidth = window.innerWidth - sidebarWidth;
+      const questionWidth = Math.max(300, Math.min(newPosition, availableWidth - 300));
+      const answerWidth = availableWidth - questionWidth;
+
+      setDimensions((prev) => {
+        if (
+          prev.questions.width === questionWidth &&
+          prev.answers.width === answerWidth
+        ) {
+          return prev;
+        }
+        console.log('🔄 Updating dimensions:', { questionWidth, answerWidth });
+        return {
+          questions: { width: questionWidth, height: window.innerHeight },
+          answers: { width: answerWidth, height: window.innerHeight },
+        };
+      });
+    },
+    [isCollapsed]
+  );
 
   const getSplitterConstraints = useCallback(() => {
     const sidebarWidth = sidebarRef.current
@@ -279,7 +277,10 @@ const DashboardLayout = () => {
           isSmallScreen ? 'flex-col' : 'flex-row'
         } max-w-full h-full`}
       >
-        <div className={`flex-none ${isSmallScreen ? 'mb-4 w-full' : ''}`}>
+        <div
+          className={`flex-none ${isSmallScreen ? 'mb-4 w-full' : ''}`}
+          style={{ width: isSmallScreen ? '100%' : dimensions.questions.width }}
+        >
           <ResizablePanel
             width={dimensions.questions.width}
             height={dimensions.questions.height}
@@ -313,7 +314,10 @@ const DashboardLayout = () => {
           />
         )}
 
-        <div className={`flex-none ${isSmallScreen ? 'w-full' : ''}`}>
+        <div
+          className={`flex-none ${isSmallScreen ? 'w-full' : ''}`}
+          style={{ width: isSmallScreen ? '100%' : dimensions.answers.width }}
+        >
           <ResizablePanel
             width={dimensions.answers.width}
             height={dimensions.answers.height}
