@@ -1,4 +1,3 @@
-// src\components\AnswerSection\index.js
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Editor from './components/Editor';
 import ActionBar from './components/ActionBar';
@@ -8,16 +7,15 @@ import useVersionHistory from './hooks/useVersionHistory';
 import useAnswerGeneration from './hooks/useAnswerGeneration';
 import DropdownMenu from '../QuestionSection/DropdownMenu';
 
-export const AnswerSection = ({ 
+export const AnswerSection = ({
   question,
-  onAnswerGenerated, 
-  onSourcesUpdate, 
+  onAnswerGenerated,
+  onSourcesUpdate,
   isGenerating,
   selectedHistoryQuestion,
   currentAnswer,
   parentName
 }) => {
-
   const {
     loading,
     error,
@@ -45,8 +43,6 @@ export const AnswerSection = ({
 
   const versionHistoryArg = isNewConversation ? null : (questionId || selectedHistoryQuestion?.id);
 
-
-    
   const {
     versions,
     currentVersionId,
@@ -56,24 +52,20 @@ export const AnswerSection = ({
     toggleLike,
     toggleBookmark,
     reset: resetVersionHistory
-  } = useVersionHistory(isNewConversation ? null : (questionId || selectedHistoryQuestion?.id));
+  } = useVersionHistory(versionHistoryArg);
 
   const currentVersion = getCurrentVersion();
   const [processingStartTime, setProcessingStartTime] = useState(null);
   const [processingTime, setProcessingTime] = useState(null);
 
-
-
-    // Add this useEffect to track the processing time
+  // Track processing time
   useEffect(() => {
-    // Start timing when question is submitted but answer isn't ready yet
     if (isGenerating && !loading && processingStartTime === null) {
       console.log('🕒 Starting processing time tracking');
       setProcessingStartTime(Date.now());
       setProcessingTime(null);
     }
-    
-    // End timing when answer is generated
+
     if (!isGenerating && processingStartTime !== null) {
       const endTime = Date.now();
       const timeTaken = endTime - processingStartTime;
@@ -83,7 +75,7 @@ export const AnswerSection = ({
     }
   }, [isGenerating, loading]);
 
-  // Add this to reset the timer on conversation reset
+  // Reset timer on conversation reset
   useEffect(() => {
     const handleResetConversation = () => {
       setProcessingTime(null);
@@ -94,7 +86,7 @@ export const AnswerSection = ({
     if (answerSectionElement) {
       answerSectionElement.addEventListener('resetConversation', handleResetConversation);
     }
-    
+
     window.addEventListener('globalResetConversation', handleResetConversation);
 
     return () => {
@@ -111,8 +103,7 @@ export const AnswerSection = ({
     return `${(ms / 1000).toFixed(2)}s`;
   };
 
-  // Listen for reset conversation event
-
+  // Handle conversation reset
   useEffect(() => {
     const handleResetConversation = (event) => {
       console.log('🔴 AnswerSection - Conversation reset received', event);
@@ -121,9 +112,9 @@ export const AnswerSection = ({
       setIsNewConversation(true);
       setCurrentParentName('');
       setResponseMode('simplified');
-      clearAnswer(); // 清空 useAnswerGeneration 的状态
-      setCurrentVersionId(null); // 重置版本选择
-      resetVersionHistory(); // 应调用 useVersionHistory 的 reset
+      clearAnswer();
+      setCurrentVersionId(null);
+      resetVersionHistory();
       console.log('🔴 AnswerSection - Conversation reset complete');
     };
 
@@ -142,11 +133,8 @@ export const AnswerSection = ({
       }
     };
   }, [clearAnswer, resetVersionHistory]);
-  
-  // Add this debugging code right in the render function, near the top
-  // (For debugging purposes, remove in production)
-  console.log('🔴 AnswerSection rendering with isNewConversation:', isNewConversation);
 
+  // Update parent name
   useEffect(() => {
     if (parentName !== undefined && parentName !== currentParentName) {
       console.log('🔄 Parent name updated from props:', parentName);
@@ -157,20 +145,20 @@ export const AnswerSection = ({
     }
   }, [parentName, currentParentName, updateParentName]);
 
+  // Handle new question event
   useEffect(() => {
     const handleNewQuestion = async (event) => {
       const { question, parameters, parentName: eventParentName } = event.detail;
       console.log('🔄 Received new question event:', event.detail);
-      
-      // Set to false since we're now getting a question
+
       setIsNewConversation(false);
-      
+
       if (eventParentName !== undefined) {
         setCurrentParentName(eventParentName);
       }
-      
+
       try {
-        const result = await generateAnswerFromQuestion(question, { 
+        const result = await generateAnswerFromQuestion(question, {
           parameters,
           parent_name: eventParentName || currentParentName
         });
@@ -187,7 +175,7 @@ export const AnswerSection = ({
         console.error('❌ Error generating answer:', error);
       }
     };
-  
+
     const element = document.getElementById('answer-section');
     if (element) {
       element.addEventListener('newQuestion', handleNewQuestion);
@@ -197,27 +185,23 @@ export const AnswerSection = ({
     }
   }, [generateAnswerFromQuestion, onAnswerGenerated, currentParentName]);
 
-// AnswerSection.js
+  // Handle editor content updates
   useEffect(() => {
-    console.log('🔄 Response mode changed to:', responseMode);
-    console.log('📜 Current answer:', currentAnswer);
-    console.log('🤖 New answer data:', { answer, detailedResponse, simpleResponse });
-
     let content = '';
     if (currentAnswer?.isHistoricalAnswer) {
-      console.log('📜 Processing historical answer');
+      console.log('📜 Processing historical answer:', currentAnswer);
       content = responseMode === 'detailed'
         ? (currentAnswer.detailed_response || 'Detailed response not available')
         : (currentAnswer.simple_response || currentAnswer.response || 'Simplified response not available');
       setIsNewConversation(false);
     } else if (currentAnswer && !isGenerating) {
-      console.log('🤖 Processing new answer from currentAnswer');
+      console.log('🤖 Processing new answer from currentAnswer:', currentAnswer);
       content = responseMode === 'detailed'
         ? (currentAnswer.detailed_response || 'Detailed response not available')
         : (currentAnswer.simple_response || currentAnswer.response || 'Simplified response not available');
       setIsNewConversation(false);
     } else if (answer && !isGenerating) {
-      console.log('🤖 Processing new AI answer from useAnswerGeneration');
+      console.log('🤖 Processing new AI answer from useAnswerGeneration:', { answer, detailedResponse, simpleResponse });
       content = responseMode === 'detailed'
         ? (detailedResponse || 'Detailed response not available')
         : (simpleResponse || detailedResponse || 'Simplified response not available');
@@ -240,7 +224,7 @@ export const AnswerSection = ({
           updateParentName(currentAnswer.parent_name);
         }
       }
-      if (!initialLoadDone.current && currentAnswer.isHistoricalAnswer) {
+      if (!initialLoadDone.current) {
         initialLoadDone.current = true;
       } else if (!currentAnswer.isHistoricalAnswer && content && !versions.some(v => v.content === content)) {
         addVersion(content, 'ai', {
@@ -255,8 +239,9 @@ export const AnswerSection = ({
         parent_name: currentParentName
       });
     }
-  }, [answer, detailedResponse, simpleResponse, responseMode, currentAnswer, versions, addVersion, onSourcesUpdate, currentParentName, updateParentName, isNewConversation, isGenerating]);
+  }, [answer, detailedResponse, simpleResponse, responseMode, currentAnswer, versions, addVersion, onSourcesUpdate, currentParentName, updateParentName, isGenerating]);
 
+  // Handle version selection
   useEffect(() => {
     const selectedVersion = getCurrentVersion();
     if (selectedVersion) {
@@ -270,53 +255,56 @@ export const AnswerSection = ({
     }
   }, [currentVersionId, getCurrentVersion, updateParentName]);
 
+  // Update sources
   useEffect(() => {
     if (sources && onSourcesUpdate && !currentAnswer?.isHistoricalAnswer) {
       onSourcesUpdate(sources);
     }
   }, [sources, onSourcesUpdate, currentAnswer]);
 
+  // Handle new question processing
   useEffect(() => {
     const handleAnswer = async () => {
-      if (question && 
-          typeof question === 'object' &&  
-          question.question !== processedQuestionRef.current &&
-          !currentAnswer?.isHistoricalAnswer) {
-        
+      if (
+        question &&
+        typeof question === 'object' &&
+        question.question !== processedQuestionRef.current &&
+        !currentAnswer?.isHistoricalAnswer
+      ) {
         console.log('🔄 Processing new question:', question);
         processedQuestionRef.current = question.question;
-        
-        // We're processing a question, so we're not in a new conversation
         setIsNewConversation(false);
-        
+
         try {
-          const options = selectedHistoryQuestion?.isFromHistory ? {
-            isHistoricalAnswer: true,
-            conversation_id: selectedHistoryQuestion.conversation_id,
-            response: selectedHistoryQuestion.response,
-            simple_response: selectedHistoryQuestion.simple_response || selectedHistoryQuestion.response || 'Simplified response not available',
-            detailed_response: selectedHistoryQuestion.detailed_response || 'Detailed response not available',
-            source_data: selectedHistoryQuestion.source_data || [],
-            response_metadata: selectedHistoryQuestion.response_metadata || {},
-            question_id: selectedHistoryQuestion.id,
-            parameters: question.parameters,
-            parent_name: question.parentName || currentParentName
-          } : { 
-            parameters: question.parameters,
-            parent_name: question.parentName || currentParentName,
-            conversation_id: conversationId
-          };
+          const options = selectedHistoryQuestion?.isFromHistory
+            ? {
+                isHistoricalAnswer: true,
+                conversation_id: selectedHistoryQuestion.conversation_id,
+                response: selectedHistoryQuestion.response,
+                simple_response: selectedHistoryQuestion.simple_response || selectedHistoryQuestion.response || 'Simplified response not available',
+                detailed_response: selectedHistoryQuestion.detailed_response || 'Detailed response not available',
+                source_data: selectedHistoryQuestion.source_data || [],
+                response_metadata: selectedHistoryQuestion.response_metadata || {},
+                question_id: selectedHistoryQuestion.id,
+                parameters: question.parameters,
+                parent_name: question.parentName || currentParentName
+              }
+            : {
+                parameters: question.parameters,
+                parent_name: question.parentName || currentParentName,
+                conversation_id: conversationId
+              };
 
           const response = await generateAnswerFromQuestion(question.question, options);
           console.log('🔍 Response from generateAnswerFromQuestion:', response);
-          
+
           if (response && (response.detailed_response || response.simple_response)) {
-            const content = responseMode === 'detailed' 
+            const content = responseMode === 'detailed'
               ? (response.detailed_response || 'Detailed response not available')
               : (response.simple_response || response.response || 'Simplified response not available');
             setEditorContent(content);
             setOriginalContent(content);
-            
+
             if (onAnswerGenerated) {
               onAnswerGenerated({
                 id: response.question_id,
@@ -388,7 +376,6 @@ export const AnswerSection = ({
     return tempDiv.textContent || tempDiv.innerText || '';
   }, []);
 
-  // Render a welcome message for new conversations
   const renderWelcomeMessage = () => {
     return (
       <div className="h-full flex items-center justify-center">
@@ -432,8 +419,7 @@ export const AnswerSection = ({
                 onChange={(value) => setResponseMode(value)}
               />
             </div>
-            
-            {/* Processing time indicator */}
+
             {(processingTime !== null || isGenerating) && (
               <div className="mt-1 flex items-center">
                 {isGenerating ? (
@@ -449,13 +435,13 @@ export const AnswerSection = ({
               </div>
             )}
           </div>
-          
+
           {currentParentName && (
             <div className="mb-3 text-sm text-gray-600">
               <span className="font-medium">Parent:</span> {currentParentName}
             </div>
           )}
-          
+
           <div className="flex-1 overflow-hidden">
             {loading || isGenerating ? (
               <div className="animate-pulse h-full bg-white rounded-lg border p-4">
@@ -487,7 +473,7 @@ export const AnswerSection = ({
           metadata={metadata}
           onCopy={handleCopy}
           parentName={currentParentName}
-          disabled={isNewConversation} // Disable action bar for new conversations
+          disabled={isNewConversation}
         />
         {showComparison && (
           <VersionComparison

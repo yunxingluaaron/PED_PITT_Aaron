@@ -2,7 +2,8 @@
 import React from 'react';
 import { format } from 'date-fns';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
+
+const currentVersion = get.BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
 
 const VersionControl = ({ versions, currentVersion, onVersionSelect }) => {
   return (
