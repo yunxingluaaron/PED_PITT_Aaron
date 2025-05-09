@@ -7,14 +7,16 @@ export const generateAnswer = async ({
   options = {}, 
   conversation_id = null, 
   parameters = null,
-  parent_name = null
+  parent_name = null,
+  conversation_action = 'continue' // Add conversation_action with default
 }) => {
   console.log('🚀 generateAnswer called with:', { 
     message, 
     options, 
     conversation_id,
     parameters,
-    parent_name
+    parent_name,
+    conversation_action
   });
   
   if (options.isHistoricalAnswer) {
@@ -51,7 +53,8 @@ export const generateAnswer = async ({
         professionalStyle: 'clinicallyBalanced'
       },
       response_type: 'text',
-      parent_name: parent_name || null
+      parent_name: parent_name || null,
+      conversation_action: conversation_action || 'continue' // Include conversation_action
     };
 
     console.log('📤 Request data being sent:', JSON.stringify(requestData, null, 2));

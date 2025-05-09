@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 const QuestionInput = ({
   value,
@@ -11,6 +11,9 @@ const QuestionInput = ({
   // Use useRef to track previous value to avoid unnecessary console logs
   const prevProps = useRef({ value, loading, isHistoricalQuestion });
   
+  // State for conversation toggle (close or continue)
+  const [conversationAction, setConversationAction] = useState('continue');
+
   // Only log when props actually change
   useEffect(() => {
     if (
@@ -30,7 +33,7 @@ const QuestionInput = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('🟢 handleSubmit called with value:', value);
+    console.log('🟢 handleSubmit called with value:', value, 'conversationAction:', conversationAction);
     
     if (!value.trim() || loading) {
       console.log('🟢 Submission blocked: empty value or loading');
@@ -38,7 +41,8 @@ const QuestionInput = ({
     }
     
     console.log('🟢 Calling parent onSubmit');
-    onSubmit(value);
+    // Pass both the question value and the conversation action to the parent
+    onSubmit(value, conversationAction);
   };
 
   const handleChange = (e) => {
@@ -48,6 +52,12 @@ const QuestionInput = ({
   const handleClear = () => {
     console.log('🟢 handleClear called');
     onClear();
+  };
+
+  const handleToggle = () => {
+    const newAction = conversationAction === 'continue' ? 'close' : 'continue';
+    setConversationAction(newAction);
+    console.log('🟢 Toggled conversation action to:', newAction);
   };
 
   return (
@@ -62,6 +72,36 @@ const QuestionInput = ({
         disabled={loading}
         rows={12}
       />
+      {/* Toggle Slider in Bottom-Left */}
+      <div className="absolute bottom-3 left-3">
+        <div className="flex items-center bg-gray-200 rounded-full p-1 w-64">
+          <button
+            type="button"
+            onClick={handleToggle}
+            className={`flex-1 py-1 px-2 rounded-full text-sm transition-all duration-300 ${
+              conversationAction === 'continue'
+                ? 'bg-green-500 text-white'
+                : 'bg-transparent text-gray-600'
+            }`}
+            disabled={loading}
+          >
+            Continue Conversation
+          </button>
+          <button
+            type="button"
+            onClick={handleToggle}
+            className={`flex-1 py-1 px-2 rounded-full text-sm transition-all duration-300 ${
+              conversationAction === 'close'
+                ? 'bg-red-500 text-white'
+                : 'bg-transparent text-gray-600'
+            }`}
+            disabled={loading}
+          >
+            Close Conversation
+          </button>
+        </div>
+      </div>
+      {/* Existing Buttons in Bottom-Right */}
       <div className="absolute bottom-3 right-3 flex gap-2">
         {value && (
           <button

@@ -40,13 +40,17 @@ def submit_question():
             'professionalStyle': 'clinicallyBalanced'
         })
 
-        # Extract parent name from request
+        # Extract parent name and conversation action
         parent_name = data.get('parent_name', '')
+        conversation_action_log = data.get('conversation_action')
+        conversation_action = data.get('conversation_action', 'continue')
         logger.info(f"Parent name received: {parent_name}")
+        logger.info(f"Conversation action received: {conversation_action_log}")
 
-        # Add parent_name to parameters if provided
+        # Add parent_name and conversation_action to parameters
         if parent_name:
             parameters['parent_name'] = parent_name
+        parameters['conversation_action'] = conversation_action
 
         logger.info(f"in the chat api, the tuning parameters is {parameters}")
 
@@ -72,10 +76,15 @@ def submit_question():
                 conversation_id = str(uuid.uuid4())
                 conversation = Conversation(
                     conversation_id=conversation_id,
-                    user_id=user_id
+                    user_id=user_id,
+                    is_active=True
                 )
                 db.session.add(conversation)
                 db.session.flush()
+
+            # Update conversation status if closing
+            if conversation_action == 'close':
+                conversation.is_active = False
 
             # Create question record
             new_question = Question(
@@ -104,12 +113,13 @@ def submit_question():
                 conversation_id=conversation.id,
                 content=message,
                 response=analysis_results['simple_analysis'],
-                detailed_response = analysis_results['analysis'],
+                detailed_response=analysis_results['analysis'],
                 response_metadata=analysis_results['metadata'],
                 source_data=analysis_results['sources'],
                 relationship_data=[rel for result in hybrid_results 
                              for rel in result.get('relationships', [])],
-                parent_name=parent_name
+                parent_name=parent_name,
+                conversation_action=conversation_action
             )
             db.session.add(new_message)
 
@@ -119,7 +129,8 @@ def submit_question():
                 content=message,
                 type='user',
                 timestamp=datetime.utcnow(),
-                parent_name=parent_name
+                parent_name=parent_name,
+                conversation_action=conversation_action
             )
             db.session.add(user_version)
 
@@ -128,7 +139,8 @@ def submit_question():
                 content=analysis_results['simple_analysis'],
                 type='ai',
                 timestamp=datetime.utcnow(),
-                parent_name=parent_name
+                parent_name=parent_name,
+                conversation_action=conversation_action
             )
             db.session.add(ai_version)
 
@@ -138,8 +150,8 @@ def submit_question():
             response_data = {
                 'conversation_id': conversation_id,
                 'question_id': new_question.id,
-                'detailed_response': analysis_results['analysis'],  # 返回详细分析
-                'simple_response': analysis_results['simple_analysis'],  # 返回简洁分析
+                'detailed_response': analysis_results['analysis'],
+                'simple_response': analysis_results['simple_analysis'],
                 'sources': analysis_results['sources'],
                 'metadata': analysis_results['metadata'],
                 'relationships': [rel for result in hybrid_results 
@@ -147,7 +159,8 @@ def submit_question():
                 'text_content': analysis_results['text_content'],
                 'ai_version_id': ai_version.id,
                 'user_version_id': user_version.id,
-                'parent_name': parent_name
+                'parent_name': parent_name,
+                'conversation_action': conversation_action
             }
 
             return jsonify(response_data)

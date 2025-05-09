@@ -47,6 +47,7 @@ class Conversation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     conversation_id = db.Column(db.String(36), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     messages = db.relationship('Message', backref='conversation', lazy=True)
 
@@ -64,6 +65,7 @@ class Message(db.Model):
     parent_name = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     message_type = db.Column(db.String(50), default='text')
+    conversation_action = db.Column(db.String(50), nullable=True)
 
     def to_dict(self):
         """Convert message object to dictionary."""
@@ -114,6 +116,7 @@ class VersionHistory(db.Model):
     type = db.Column(db.String(50), nullable=False)  # 'user' or 'ai'
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     parent_name = db.Column(db.String(255), nullable=True)
+    conversation_action = db.Column(db.String(50), nullable=True)
     is_liked = db.Column(db.Boolean, default=False)
     is_bookmarked = db.Column(db.Boolean, default=False)
 

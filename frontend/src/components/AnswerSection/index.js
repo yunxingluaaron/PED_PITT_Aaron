@@ -58,7 +58,6 @@ export const AnswerSection = ({
   const [processingStartTime, setProcessingStartTime] = useState(null);
   const [processingTime, setProcessingTime] = useState(null);
 
-  // Track processing time
   useEffect(() => {
     if (isGenerating && !loading && processingStartTime === null) {
       console.log('🕒 Starting processing time tracking');
@@ -75,7 +74,6 @@ export const AnswerSection = ({
     }
   }, [isGenerating, loading]);
 
-  // Reset timer on conversation reset
   useEffect(() => {
     const handleResetConversation = () => {
       setProcessingTime(null);
@@ -103,7 +101,6 @@ export const AnswerSection = ({
     return `${(ms / 1000).toFixed(2)}s`;
   };
 
-  // Handle conversation reset
   useEffect(() => {
     const handleResetConversation = (event) => {
       console.log('🔴 AnswerSection - Conversation reset received', event);
@@ -134,7 +131,6 @@ export const AnswerSection = ({
     };
   }, [clearAnswer, resetVersionHistory]);
 
-  // Update parent name
   useEffect(() => {
     if (parentName !== undefined && parentName !== currentParentName) {
       console.log('🔄 Parent name updated from props:', parentName);
@@ -145,10 +141,9 @@ export const AnswerSection = ({
     }
   }, [parentName, currentParentName, updateParentName]);
 
-  // Handle new question event
   useEffect(() => {
     const handleNewQuestion = async (event) => {
-      const { question, parameters, parentName: eventParentName } = event.detail;
+      const { question, parameters, parentName: eventParentName, conversationAction } = event.detail;
       console.log('🔄 Received new question event:', event.detail);
 
       setIsNewConversation(false);
@@ -157,17 +152,26 @@ export const AnswerSection = ({
         setCurrentParentName(eventParentName);
       }
 
+      if (conversationAction === 'close') {
+        console.log('🔴 Closing conversation');
+        setIsNewConversation(true);
+        clearAnswer();
+        resetVersionHistory();
+      }
+
       try {
         const result = await generateAnswerFromQuestion(question, {
           parameters,
-          parent_name: eventParentName || currentParentName
+          parent_name: eventParentName || currentParentName,
+          conversation_action: conversationAction
         });
         if (result) {
           console.log('✅ Answer generated:', result);
           if (onAnswerGenerated) {
             onAnswerGenerated({
               ...result,
-              parent_name: eventParentName || currentParentName || result.parent_name
+              parent_name: eventParentName || currentParentName || result.parent_name,
+              conversation_action: conversationAction
             });
           }
         }
@@ -185,7 +189,6 @@ export const AnswerSection = ({
     }
   }, [generateAnswerFromQuestion, onAnswerGenerated, currentParentName]);
 
-  // Handle editor content updates
   useEffect(() => {
     let content = '';
     if (currentAnswer?.isHistoricalAnswer) {
@@ -241,7 +244,6 @@ export const AnswerSection = ({
     }
   }, [answer, detailedResponse, simpleResponse, responseMode, currentAnswer, versions, addVersion, onSourcesUpdate, currentParentName, updateParentName, isGenerating]);
 
-  // Handle version selection
   useEffect(() => {
     const selectedVersion = getCurrentVersion();
     if (selectedVersion) {
@@ -255,14 +257,12 @@ export const AnswerSection = ({
     }
   }, [currentVersionId, getCurrentVersion, updateParentName]);
 
-  // Update sources
   useEffect(() => {
     if (sources && onSourcesUpdate && !currentAnswer?.isHistoricalAnswer) {
       onSourcesUpdate(sources);
     }
   }, [sources, onSourcesUpdate, currentAnswer]);
 
-  // Handle new question processing
   useEffect(() => {
     const handleAnswer = async () => {
       if (
@@ -287,12 +287,14 @@ export const AnswerSection = ({
                 response_metadata: selectedHistoryQuestion.response_metadata || {},
                 question_id: selectedHistoryQuestion.id,
                 parameters: question.parameters,
-                parent_name: question.parentName || currentParentName
+                parent_name: question.parentName || currentParentName,
+                conversation_action: question.conversationAction
               }
             : {
                 parameters: question.parameters,
                 parent_name: question.parentName || currentParentName,
-                conversation_id: conversationId
+                conversation_id: conversationId,
+                conversation_action: question.conversationAction
               };
 
           const response = await generateAnswerFromQuestion(question.question, options);
@@ -316,7 +318,8 @@ export const AnswerSection = ({
                 metadata: response.metadata || {},
                 isHistoricalAnswer: options.isHistoricalAnswer,
                 parameters: question.parameters,
-                parent_name: response.parent_name || currentParentName
+                parent_name: response.parent_name || currentParentName,
+                conversation_action: options.conversation_action
               });
             }
           }
@@ -482,11 +485,11 @@ export const AnswerSection = ({
           />
         )}
       </div>
-      <VersionControl
+      {/* <VersionControl
         versions={versions}
         currentVersion={currentVersionId}
         onVersionSelect={setCurrentVersionId}
-      />
+      /> */}
     </div>
   );
 };

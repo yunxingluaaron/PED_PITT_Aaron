@@ -125,53 +125,66 @@ const DashboardLayout = () => {
   }, []);
 
   const handleQuestionSubmit = useCallback(
-    async (questionData) => {
+    async (question, conversationAction, parentName, parameters, clearOnly = false) => {
       console.log('🔵 handleQuestionSubmit called:', {
-        questionData,
+        question,
+        conversationAction,
+        parentName,
+        parameters,
+        clearOnly,
         isHistorical: selectedHistoryQuestion?.isFromHistory,
-        parentName: questionData.parentName,
       });
-
+  
+      if (!question?.trim() && !clearOnly) {
+        console.error('❌ Question is empty in handleQuestionSubmit');
+        setIsGenerating(false);
+        return;
+      }
+  
+      const questionData = {
+        question: question?.trim() || '',
+        conversationAction: conversationAction || 'continue',
+        parentName,
+        parameters: parameters || {
+          tone: 'balanced',
+          detailLevel: 'moderate',
+          empathy: 'moderate',
+          professionalStyle: 'clinicallyBalanced'
+        }
+      };
+  
       if (questionData.parentName !== undefined) {
         setParentName(questionData.parentName);
       }
-
-      if (questionData.clearOnly) {
-        setSelectedHistoryQuestion(null);
-        setCurrentAnswer(null);
-        setCurrentQuestionId(null);
-        if (questionData.clearParentName) {
-          setParentName('');
-        }
-        return;
-      }
-
+  
       if (
         selectedHistoryQuestion?.isFromHistory &&
-        questionData.question === selectedHistoryQuestion.content
+        questionData.question === selectedHistoryQuestion.content &&
+        !clearOnly
       ) {
         console.log('🔵 Skipping submission for historical question');
         return;
       }
-
+  
       try {
-        setIsGenerating(true);
-        setCurrentQuestion(questionData.question);
-        setSelectedHistoryQuestion(null);
-        setCurrentAnswer(null);
-        setCurrentQuestionId(null);
-
+        if (!clearOnly) {
+          setIsGenerating(true);
+          setCurrentQuestion(questionData.question);
+          setSelectedHistoryQuestion(null);
+          setCurrentAnswer(null);
+          setCurrentQuestionId(null);
+        }
+  
         const answerSection = document.getElementById('answer-section');
         if (answerSection) {
-          const enhancedQuestionData = {
-            ...questionData,
-            parentName: questionData.parentName || parentName,
-          };
+          console.log('📤 Dispatching newQuestion event with:', questionData);
           answerSection.dispatchEvent(
             new CustomEvent('newQuestion', {
-              detail: enhancedQuestionData,
+              detail: questionData,
             })
           );
+        } else {
+          console.warn('❌ AnswerSection element not found');
         }
       } catch (error) {
         console.error('Error submitting question:', error);
@@ -197,9 +210,13 @@ const DashboardLayout = () => {
       if (answer.parent_name) {
         setParentName(answer.parent_name);
       }
+      if (answer.conversation_action === 'close') {
+        console.log('🔴 Closing conversation in handleAnswerGenerated');
+        handleNewConversation();
+      }
       window.dispatchEvent(new Event('questionAdded'));
     }
-  }, []);
+  }, [handleNewConversation]);
 
   const handleGenerationError = useCallback(() => {
     setIsGenerating(false);

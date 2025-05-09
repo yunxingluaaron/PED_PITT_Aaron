@@ -1,4 +1,3 @@
-//src\components\AnswerSection\hooks\useAnswerGeneration.js
 import { useState, useCallback } from 'react';
 import { generateAnswer } from '../../../services/questionApi';
 
@@ -6,8 +5,8 @@ export const useAnswerGeneration = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [answer, setAnswer] = useState(null);
-  const [detailedResponse, setDetailedResponse] = useState(null); // 新增：存储详细回答
-  const [simpleResponse, setSimpleResponse] = useState(null);    // 新增：存储简洁回答
+  const [detailedResponse, setDetailedResponse] = useState(null);
+  const [simpleResponse, setSimpleResponse] = useState(null);
   const [sources, setSources] = useState([]);
   const [relationships, setRelationships] = useState([]);
   const [conversationId, setConversationId] = useState(null);
@@ -15,24 +14,32 @@ export const useAnswerGeneration = () => {
   const [questionId, setQuestionId] = useState(null);
   const [parentName, setParentName] = useState('');
 
-  // useAnswerGeneration.js
   const generateAnswerFromQuestion = useCallback(async (question, options = {}) => {
     setLoading(true);
     setError(null);
-
+  
+    if (!question?.trim()) {
+      console.error('❌ Question is empty or invalid');
+      setError('Question cannot be empty');
+      setLoading(false);
+      return;
+    }
+  
     if (options.parent_name !== undefined) {
       setParentName(options.parent_name);
     }
-
+  
     console.log('📝 Generating answer for question:', question);
     console.log('🔧 With options:', options);
     console.log('👨‍👩‍👧‍👦 Parent name:', options.parent_name || parentName);
-
+    console.log('🔄 Conversation action:', options.conversation_action || 'continue');
+  
     try {
       const requestData = {
-        message: question,
+        message: question.trim(),
         conversation_id: options.conversation_id || conversationId,
         parent_name: options.parent_name || parentName,
+        conversation_action: options.conversation_action || 'continue',
         options: {
           isHistoricalAnswer: options.isHistoricalAnswer || false,
           conversation_id: options.conversation_id,
@@ -48,11 +55,10 @@ export const useAnswerGeneration = () => {
           professionalStyle: 'clinicallyBalanced'
         }
       };
-
+  
       const response = await generateAnswer(requestData);
       console.log('🔍 API Response:', JSON.stringify(response, null, 2));
 
-      // 确保 simple_response 和 detailed_response 有默认值
       const normalizedResponse = {
         ...response,
         simple_response: response.simple_response || response.detailed_response || 'Simplified response not available',
@@ -62,7 +68,8 @@ export const useAnswerGeneration = () => {
         conversation_id: response.conversation_id || conversationId,
         metadata: response.metadata || {},
         question_id: response.question_id || null,
-        parent_name: response.parent_name || options.parent_name || parentName
+        parent_name: response.parent_name || options.parent_name || parentName,
+        conversation_action: response.conversation_action || options.conversation_action || 'continue'
       };
 
       setAnswer(normalizedResponse.detailed_response);
@@ -75,7 +82,8 @@ export const useAnswerGeneration = () => {
         ...normalizedResponse.metadata,
         parameters: options.parameters,
         question,
-        parent_name: normalizedResponse.parent_name
+        parent_name: normalizedResponse.parent_name,
+        conversation_action: normalizedResponse.conversation_action
       });
       setQuestionId(normalizedResponse.question_id);
 
@@ -89,7 +97,8 @@ export const useAnswerGeneration = () => {
             parameters: options.parameters,
             question,
             response: normalizedResponse.detailed_response,
-            parent_name: normalizedResponse.parent_name
+            parent_name: normalizedResponse.parent_name,
+            conversation_action: normalizedResponse.conversation_action
           }
         }));
       }
@@ -111,8 +120,8 @@ export const useAnswerGeneration = () => {
 
   const clearAnswer = useCallback(() => {
     setAnswer(null);
-    setDetailedResponse(null); // 新增：清除详细回答
-    setSimpleResponse(null);   // 新增：清除简洁回答
+    setDetailedResponse(null);
+    setSimpleResponse(null);
     setSources([]);
     setRelationships([]);
     setMetadata(null);
@@ -131,8 +140,8 @@ export const useAnswerGeneration = () => {
     loading,
     error,
     answer,
-    detailedResponse, // 新增：暴露 detailedResponse
-    simpleResponse,  // 新增：暴露 simpleResponse
+    detailedResponse,
+    simpleResponse,
     sources,
     relationships,
     metadata,

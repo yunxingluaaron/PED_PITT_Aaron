@@ -479,11 +479,15 @@ class ElasticsearchQuerier:
             'tone': 'balanced',
             'detailLevel': 'moderate',
             'empathy': 'moderate',
-            'professionalStyle': 'clinicallyBalanced'
+            'professionalStyle': 'clinicallyBalanced',
+            'conversation_action': 'continue'
         }
+
         parent_name = parameters.get('parent_name', '')
+
+        conversation_action = parameters.get('conversation_action', 'continue')
         
-        logger.info(f"Processing search with parameters: {parameters}")
+        logger.info(f"From the process search results, the Processing search with parameters: {parameters}")
         logger.info(f"Parent name for response: {parent_name}")
 
         text_content = []
@@ -565,7 +569,8 @@ class ElasticsearchQuerier:
                         textbook_info=detailed_analysis,
                         examples=conversation_examples,
                         language="neutral",
-                        parent_name=parent_name
+                        parent_name=parent_name,
+                        conversation_action=conversation_action
                     )
                     
                     logger.info("Successfully generated response using real conversation analysis")

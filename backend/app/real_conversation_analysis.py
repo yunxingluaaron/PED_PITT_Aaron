@@ -635,7 +635,7 @@ def compare_examples_with_textbook(examples: List[Tuple[str, str]], textbook_inf
         examples_text = ""
         for i, (question, answer) in enumerate(examples, 1):
             examples_text += f"Example {i}:\nParent: {question}\nDoctor: {answer}\n\n"
-        
+
         system_prompt = """
         You are an expert medical knowledge analyst specializing in pediatric healthcare.
         Compare real pediatrician-parent conversations with a reference medical textbook
@@ -928,7 +928,8 @@ def analyze_query_complexity_with_llm(query: str, language: str = "neutral") -> 
         return default_results
 
 def generate_response(query: str, textbook_info: str, examples: List[Tuple[str, str]], 
-                     language: str = "neutral", parent_name: str = "") -> str:
+                     language: str = "neutral", parent_name: str = "", 
+                     conversation_action: str = "continue") -> str:
     """
     Generate a pediatrician's response to a parent's query using enhanced LLM-driven analysis,
     incorporating a flowchart to guide questioning strategy. The final response is always in English.
@@ -938,10 +939,13 @@ def generate_response(query: str, textbook_info: str, examples: List[Tuple[str, 
         textbook_info: Medical information to use for the response
         examples: List of (question, answer) tuples for style reference
         language: Language for analyzing examples ('neutral' for English, 'zh' for Chinese)
+        parent_name: Name of the parent for personalization
+        conversation_action: 'continue' to include knowledge gaps and flowchart, 'close' to end conversation
         
     Returns:
         A structured medical response in English
     """
+    logger.info(f"From the generate response from the real conversation analysis, the action is : {conversation_action}")
     # Step 1: Analyze query complexity and characteristics
     query_analysis = analyze_query_complexity_with_llm(query, language=language)
     logging.info(f"Query complexity analysis: {query_analysis}")
@@ -1065,10 +1069,17 @@ def generate_response(query: str, textbook_info: str, examples: List[Tuple[str, 
     avoid_terms = (f"We're here to support you and your child or children's name\n"
                    f"Let's address your concerns...\n")
     
-    # Step 6: Create enhanced prompt with style patterns, knowledge gaps, and flowchart
-    prompt = (
-        f"You are an experienced pediatrician answering a parent's question. Address the parent as '{parent_name}' if provided, otherwise just directly with reply message"
 
+    if conversation_action == "close":
+        closing_instruction = (
+            "end the conversation without asking any questions or leave any hints or thread that will indicate the patient to write message back. But must be politly such as I hope these will address your concerns."
+        )
+    
+    # Step 6: Create enhanced prompt with style patterns, knowledge gaps, and flowchart
+    # Step 6: Create enhanced prompt with style patterns and conditional logic
+    prompt = (
+        f"You are an experienced pediatrician answering a parent's question. Address the parent as '{parent_name}' if provided, otherwise directly with the reply message.\n\n"
+        
         f"Your tone is {example_tone}, like a trusted doctor who is clear and supportive.\n\n"
         
         f"Follow this detailed reasoning process internally (but do not reveal your chain-of-thought to the parent):\n"
@@ -1077,23 +1088,33 @@ def generate_response(query: str, textbook_info: str, examples: List[Tuple[str, 
         
         f"2. **Extract Key Medical Keywords**: Identify the main medical terms and concerns in the parent's question.\n"
         
-        f"3. **Recall Provided Medical Info**: Use only the data from 'Medical Information' below if it answers the question.\n"
+        f"3. **Recall Provided Medical Info**: Use only the data from 'Medical Information' below to answer the question.\n"
         f"   - If the question is unrelated, politely decline.\n"
         f"   - If any relevant points are missing in the 'Medical Information', note them.\n"
-        
-        f"4. **Follow Flowchart for Clarification**: If the query is vague or lacks details, use the 'Flowchart for Questioning Strategy' below to ask clarifying questions:\n"
-        f"{flowchart_text}\n"
-        f"   - Start with the first question node and proceed based on the transitions (edges) that match the parent's response or query context.\n"
-        f"   - If the flowchart suggests a question but the query already provides sufficient details, skip to providing advice.\n"
-        
-        f"5. **Consider Knowledge Gaps**: Review the list of topics that commonly require clarification:\n"
-        f"{knowledge_gaps_text}\n"
-        f"   - If the parent's question relates to one of these topics but lacks details, ask the suggested clarifying question.\n"
-        f"   - If multiple clarifying questions could apply, prioritize the most relevant one from the flowchart or knowledge gaps.\n"
-        
-        f"6. **Reason Through Options**: If necessary info is missing, ask for clarification based on the flowchart or knowledge gaps. "
-        f"For example, if the parent does not mention the age of their child, or if specific symptom details would change your advice.\n"
-        
+    )
+
+    if conversation_action == "continue":
+        prompt += (
+            f"4. **Follow Flowchart for Clarification**: If the query is vague or lacks details, use the 'Flowchart for Questioning Strategy' below to ask clarifying questions:\n"
+            f"{flowchart_text}\n"
+            f"   - Start with the first question node and proceed based on the transitions (edges) that match the parent's response or query context.\n"
+            f"   - If the flowchart suggests a question but the query already provides sufficient details, skip to providing advice.\n"
+            
+            f"5. **Consider Knowledge Gaps**: Review the list of topics that commonly require clarification:\n"
+            f"{knowledge_gaps_text}\n"
+            f"   - If the parent's question relates to one of these topics but lacks details, ask the suggested clarifying question.\n"
+            f"   - If multiple clarifying questions could apply, prioritize the most relevant one from the flowchart or knowledge gaps.\n"
+            
+            f"6. **Reason Through Options**: If necessary info is missing, ask for clarification based on the flowchart or knowledge gaps. "
+            f"For example, if the parent does not mention the age of their child, or if specific symptom details would change your advice.\n"
+        )
+    else:
+        prompt += (
+            f"4. **Provide Direct Answer**: Answer the query directly using the provided medical information, without asking for additional clarification.\n"
+            f"5. **Keep Response Concise**: Focus on addressing the query clearly and concisely, avoiding speculative questions.\n"
+        )
+    
+    prompt += (
         f"7. **Style Guide Checklist**:\n"
         f"   - Structure: {style_checklist['structure']}\n"
         f"   - Phrasing: {style_checklist['phrasing']}\n" 
@@ -1102,23 +1123,42 @@ def generate_response(query: str, textbook_info: str, examples: List[Tuple[str, 
         f"   - Advice: {style_checklist['advice']}\n"
         
         f"8. **Formulate Answer**: Provide a concise response ({example_length}) that is {example_structure}, "
+
         f"using {example_phrasing} and including {example_engagement_str}.\n"
+        
         
         f"9. **Self-Check**: Ensure the answer avoids {example_errors}, stays aligned with the medical info, "
         f"and matches the query's intent. Avoid revealing your internal reasoning.\n\n"
         
         f"**Medical Information**:\n{textbook_info}\n\n"
         
-        f"Parent Question: {query}\n"
+        f"**Parent Question**: {query}\n"
+    
         
         f"Respond in clear, simple English, regardless of the analysis language ({language}). "
+
         f"Use the medical information provided to answer the query. "
-        f"If the query is vague, ask for details (e.g., 'How old is your child?') based on the flowchart, "
-        f"ensuring the question is in English. "
-        f"Assume a typical pediatric scenario only if the flowchart or medical info supports it. "
+
+        f"ensuring any questions are in English. "
+
+        f"Assume a typical pediatric scenario only if the medical info supports it. "
+
         f"Avoid AI-like verbosity or generic empathy (e.g., 'I understand your concern', {avoid_terms})."
     )
-    
+
+    if conversation_action == "close":
+        closing_instruction = (
+            "End the conversation politely without asking questions or suggesting further interaction. "
+            "Include a closing statement like: 'I hope this addresses your concerns.'"
+        )
+        prompt += f"\n{closing_instruction}"
+
+    # Log the constructed prompt for debugging
+    logger.debug(f"Constructed prompt: {prompt}")
+
+
+    logger.info(f"*************** the conversation_action is: {conversation_action}***************")
+    logger.info(f"*************** the final prompt is: {prompt}***************")
     # Step 7: Call Language Model
     try:
         response = call_language_model(
