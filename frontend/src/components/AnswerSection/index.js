@@ -145,20 +145,13 @@ export const AnswerSection = ({
     const handleNewQuestion = async (event) => {
       const { question, parameters, parentName: eventParentName, conversationAction } = event.detail;
       console.log('🔄 Received new question event:', event.detail);
-
-      setIsNewConversation(false);
-
+  
+      setIsNewConversation(false); // 确保答案可以渲染
+  
       if (eventParentName !== undefined) {
         setCurrentParentName(eventParentName);
       }
-
-      if (conversationAction === 'close') {
-        console.log('🔴 Closing conversation');
-        setIsNewConversation(true);
-        clearAnswer();
-        resetVersionHistory();
-      }
-
+  
       try {
         const result = await generateAnswerFromQuestion(question, {
           parameters,
@@ -174,21 +167,32 @@ export const AnswerSection = ({
               conversation_action: conversationAction
             });
           }
+          // 延迟重置，仅在关闭会话时
+          // if (conversationAction === 'close') {
+          //   console.log('🔴 Closing conversation, delaying reset');
+          //   setTimeout(() => {
+          //     console.log('🔴 Executing delayed conversation reset in AnswerSection');
+          //     setIsNewConversation(true);
+          //     clearAnswer();
+          //     resetVersionHistory();
+          //   }, 1000); // 增加延迟到 1000ms
+          // }
         }
       } catch (error) {
         console.error('❌ Error generating answer:', error);
       }
     };
-
+  
     const element = document.getElementById('answer-section');
     if (element) {
       element.addEventListener('newQuestion', handleNewQuestion);
       return () => {
         element.removeEventListener('newQuestion', handleNewQuestion);
-      };
+      }
     }
   }, [generateAnswerFromQuestion, onAnswerGenerated, currentParentName]);
-
+  
+  // 优化渲染逻辑，确保答案优先显示
   useEffect(() => {
     let content = '';
     if (currentAnswer?.isHistoricalAnswer) {
@@ -202,7 +206,7 @@ export const AnswerSection = ({
       content = responseMode === 'detailed'
         ? (currentAnswer.detailed_response || 'Detailed response not available')
         : (currentAnswer.simple_response || currentAnswer.response || 'Simplified response not available');
-      setIsNewConversation(false);
+      setIsNewConversation(false); // 确保新答案显示
     } else if (answer && !isGenerating) {
       console.log('🤖 Processing new AI answer from useAnswerGeneration:', { answer, detailedResponse, simpleResponse });
       content = responseMode === 'detailed'
@@ -215,11 +219,11 @@ export const AnswerSection = ({
     } else {
       content = 'No response available';
     }
-
+  
     console.log('📝 Setting editor content to:', content);
     setEditorContent(content);
     setOriginalContent(content);
-
+  
     if (currentAnswer?.isHistoricalAnswer) {
       if (currentAnswer.parent_name) {
         setCurrentParentName(currentAnswer.parent_name);
@@ -422,7 +426,7 @@ export const AnswerSection = ({
                 onChange={(value) => setResponseMode(value)}
               />
             </div>
-
+  
             {(processingTime !== null || isGenerating) && (
               <div className="mt-1 flex items-center">
                 {isGenerating ? (
@@ -438,13 +442,13 @@ export const AnswerSection = ({
               </div>
             )}
           </div>
-
+  
           {currentParentName && (
             <div className="mb-3 text-sm text-gray-600">
               <span className="font-medium">Parent:</span> {currentParentName}
             </div>
           )}
-
+  
           <div className="flex-1 overflow-hidden">
             {loading || isGenerating ? (
               <div className="animate-pulse h-full bg-white rounded-lg border p-4">
@@ -454,7 +458,7 @@ export const AnswerSection = ({
                 <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
                 <div className="h-4 bg-gray-200 rounded w-1/2"></div>
               </div>
-            ) : isNewConversation ? (
+            ) : !editorContent ? ( // 仅在 editorContent 为空时显示欢迎消息
               renderWelcomeMessage()
             ) : (
               <Editor
@@ -476,7 +480,7 @@ export const AnswerSection = ({
           metadata={metadata}
           onCopy={handleCopy}
           parentName={currentParentName}
-          disabled={isNewConversation}
+          disabled={!editorContent} // 禁用操作栏如果没有内容
         />
         {showComparison && (
           <VersionComparison
@@ -485,11 +489,6 @@ export const AnswerSection = ({
           />
         )}
       </div>
-      {/* <VersionControl
-        versions={versions}
-        currentVersion={currentVersionId}
-        onVersionSelect={setCurrentVersionId}
-      /> */}
     </div>
   );
 };

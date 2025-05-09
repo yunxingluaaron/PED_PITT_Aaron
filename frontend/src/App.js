@@ -210,11 +210,17 @@ const DashboardLayout = () => {
       if (answer.parent_name) {
         setParentName(answer.parent_name);
       }
-      if (answer.conversation_action === 'close') {
-        console.log('🔴 Closing conversation in handleAnswerGenerated');
-        handleNewConversation();
-      }
-      window.dispatchEvent(new Event('questionAdded'));
+      // if (answer.conversation_action === 'close') {
+      //   console.log('🔴 Closing conversation in handleAnswerGenerated, delaying reset');
+      //   setTimeout(() => {
+      //     console.log('🔴 Executing delayed conversation reset');
+      //     handleNewConversation();
+      //   }, 2000); // 增加延迟到 1000ms
+      // }
+      setTimeout(() => {
+        console.log('🔍 Dispatching questionAdded event');
+        window.dispatchEvent(new Event('questionAdded'));
+      }, 1000); // 延迟 1000ms
     }
   }, [handleNewConversation]);
 

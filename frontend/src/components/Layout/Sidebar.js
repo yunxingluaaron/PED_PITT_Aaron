@@ -1,6 +1,6 @@
-//src\components\Layout\Sidebar.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { debounce } from 'lodash';
 import {
   ChevronLeft,
   Menu,
@@ -21,38 +21,55 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
   const { logout, user } = useAuth();
   const [questions, setQuestions] = useState([]);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(true);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // 初始不显示加载
+  const questionCache = useRef(new Map()); // 缓存历史记录
 
-  const loadQuestionHistory = useCallback(async () => {
-    if (isCollapsed) return;
-    
-    try {
-      setLoading(true);
-      const data = await getQuestionHistory();
-      const enrichedData = await Promise.all(
-        data.map(async (question) => {
-          try {
-            const details = await getQuestionDetails(question.id);
-            return {
-              ...question,
-              simple_response: details.simple_response || question.response || 'Simplified response not available',
-              detailed_response: details.detailed_response || 'Detailed response not available'
-            };
-          } catch (error) {
-            console.error(`Failed to fetch details for question ${question.id}:`, error);
-            return question;
-          }
-        })
-      );
-      setQuestions(
-        enrichedData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      );
-    } catch (error) {
-      console.error('Failed to load question history:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [isCollapsed]);
+  const loadQuestionHistory = useCallback(
+    debounce(async (force = false) => {
+      if (isCollapsed) return;
+
+      // 检查缓存
+      if (!force && questionCache.current.size > 0) {
+        console.log('🔍 Loading question history from cache');
+        setQuestions(
+          Array.from(questionCache.current.values()).sort(
+            (a, b) => new Date(b.created_at) - new Date(a.created_at)
+          )
+        );
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const data = await getQuestionHistory();
+        const enrichedData = await Promise.all(
+          data.map(async (question) => {
+            try {
+              const details = await getQuestionDetails(question.id);
+              return {
+                ...question,
+                simple_response: details.simple_response || question.response || 'Simplified response not available',
+                detailed_response: details.detailed_response || 'Detailed response not available',
+              };
+            } catch (error) {
+              console.error(`Failed to fetch details for question ${question.id}:`, error);
+              return question;
+            }
+          })
+        );
+        // 更新缓存
+        enrichedData.forEach((q) => questionCache.current.set(q.id, q));
+        setQuestions(
+          enrichedData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        );
+      } catch (error) {
+        console.error('Failed to load question history:', error);
+      } finally {
+        setLoading(false);
+      }
+    }, 500), // 500ms 防抖
+    [isCollapsed]
+  );
 
   useEffect(() => {
     loadQuestionHistory();
@@ -60,12 +77,13 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
 
   useEffect(() => {
     const handleQuestionAdded = () => {
-      loadQuestionHistory();
+      console.log('🔍 questionAdded event received, forcing history reload');
+      loadQuestionHistory(true); // 强制刷新，忽略缓存
     };
-
     window.addEventListener('questionAdded', handleQuestionAdded);
     return () => {
       window.removeEventListener('questionAdded', handleQuestionAdded);
+      loadQuestionHistory.cancel(); // 取消防抖
     };
   }, [loadQuestionHistory]);
 
@@ -80,7 +98,6 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
 
   const handleQuestionClick = async (question, event) => {
     console.log('🖱️ Question clicked:', question);
-    console.log('🔍 question.simple_response:', question.simple_response);
     if (event.target.closest('.delete-button')) {
       console.log('🚫 Delete button clicked, ignoring question selection');
       return;
@@ -89,13 +106,13 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
       try {
         console.log('🎯 Calling onQuestionSelect with:', {
           ...question,
-          isFromHistory: true
+          isFromHistory: true,
         });
         onQuestionSelect({
           ...question,
           isFromHistory: true,
           simple_response: question.simple_response || 'Simplified response not available',
-          detailed_response: question.detailed_response || 'Detailed response not available'
+          detailed_response: question.detailed_response || 'Detailed response not available',
         });
       } catch (error) {
         console.error('💥 Failed to process question click:', error);
@@ -107,7 +124,8 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
     event.stopPropagation();
     try {
       await deleteQuestion(questionId);
-      setQuestions(questions.filter(q => q.id !== questionId));
+      questionCache.current.delete(questionId); // 从缓存中移除
+      setQuestions(questions.filter((q) => q.id !== questionId));
     } catch (error) {
       console.error('Failed to delete question:', error);
     }
@@ -175,10 +193,10 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
             <span className="text-sm font-medium text-gray-700">Question History</span>
             {isHistoryExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </div>
-          
+
           {isHistoryExpanded && (
             <div className="mt-2 space-y-1 max-h-[300px] overflow-y-auto">
-              {loading ? (
+              {loading && questions.length === 0 ? ( // 仅在无数据时显示加载
                 <div className="text-sm text-gray-500 px-2">Loading...</div>
               ) : questions.length === 0 ? (
                 <div className="text-sm text-gray-500 px-2">No questions yet</div>
