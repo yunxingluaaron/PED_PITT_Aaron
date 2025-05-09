@@ -6,15 +6,12 @@ const QuestionInput = ({
   onSubmit,
   loading,
   onClear,
-  isHistoricalQuestion
+  isHistoricalQuestion,
+  isNewConversation // 新增 prop
 }) => {
-  // Use useRef to track previous value to avoid unnecessary console logs
   const prevProps = useRef({ value, loading, isHistoricalQuestion });
-  
-  // State for conversation toggle (close or continue)
   const [conversationAction, setConversationAction] = useState('continue');
 
-  // Only log when props actually change
   useEffect(() => {
     if (
       prevProps.current.value !== value ||
@@ -26,7 +23,6 @@ const QuestionInput = ({
         loading,
         isHistoricalQuestion
       });
-      // Update the ref with current values
       prevProps.current = { value, loading, isHistoricalQuestion };
     }
   }, [value, loading, isHistoricalQuestion]);
@@ -41,7 +37,6 @@ const QuestionInput = ({
     }
     
     console.log('🟢 Calling parent onSubmit');
-    // Pass both the question value and the conversation action to the parent
     onSubmit(value, conversationAction);
   };
 
@@ -72,61 +67,65 @@ const QuestionInput = ({
         disabled={loading}
         rows={12}
       />
-      {/* Toggle Slider in Bottom-Left */}
-      <div className="absolute bottom-3 left-3">
-        <div className="flex items-center bg-gray-200 rounded-full p-1 w-64">
+      {/* 仅在新会话时显示切换开关 */}
+      {isNewConversation && (
+        <div className="absolute bottom-3 left-3">
+          <div className="flex items-center bg-gray-200 rounded-full p-1 w-64">
+            <button
+              type="button"
+              onClick={handleToggle}
+              className={`flex-1 py-1 px-2 rounded-full text-sm transition-all duration-300 ${
+                conversationAction === 'continue'
+                  ? 'bg-green-500 text-white'
+                  : 'bg-transparent text-gray-600'
+              }`}
+              disabled={loading}
+            >
+              Continue Conversation
+            </button>
+            <button
+              type="button"
+              onClick={handleToggle}
+              className={`flex-1 py-1 px-2 rounded-full text-sm transition-all duration-300 ${
+                conversationAction === 'close'
+                  ? 'bg-red-500 text-white'
+                  : 'bg-transparent text-gray-600'
+              }`}
+              disabled={loading}
+            >
+              Close Conversation
+            </button>
+          </div>
+        </div>
+      )}
+      {/* 仅在新会话时显示按钮 */}
+      {isNewConversation && (
+        <div className="absolute bottom-3 right-3 flex gap-2">
+          {value && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+              disabled={loading}
+            >
+              Clear
+            </button>
+          )}
           <button
-            type="button"
-            onClick={handleToggle}
-            className={`flex-1 py-1 px-2 rounded-full text-sm transition-all duration-300 ${
-              conversationAction === 'continue'
-                ? 'bg-green-500 text-white'
-                : 'bg-transparent text-gray-600'
-            }`}
-            disabled={loading}
+            type="submit"
+            className={`px-4 py-1 rounded-md ${
+              loading
+                ? 'bg-gray-400 cursor-not-allowed'
+                : isHistoricalQuestion
+                ? 'bg-blue-500 hover:bg-blue-600'
+                : 'bg-green-500 hover:bg-green-600'
+            } text-white`}
+            disabled={!value.trim() || loading}
           >
-            Continue Conversation
-          </button>
-          <button
-            type="button"
-            onClick={handleToggle}
-            className={`flex-1 py-1 px-2 rounded-full text-sm transition-all duration-300 ${
-              conversationAction === 'close'
-                ? 'bg-red-500 text-white'
-                : 'bg-transparent text-gray-600'
-            }`}
-            disabled={loading}
-          >
-            Close Conversation
+            {loading ? 'Processing...' : 'Submit'}
           </button>
         </div>
-      </div>
-      {/* Existing Buttons in Bottom-Right */}
-      <div className="absolute bottom-3 right-3 flex gap-2">
-        {value && (
-          <button
-            type="button"
-            onClick={handleClear}
-            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-            disabled={loading}
-          >
-            Clear
-          </button>
-        )}
-        <button
-          type="submit"
-          className={`px-4 py-1 rounded-md ${
-            loading
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isHistoricalQuestion
-              ? 'bg-blue-500 hover:bg-blue-600'
-              : 'bg-green-500 hover:bg-green-600'
-          } text-white`}
-          disabled={!value.trim() || loading}
-        >
-          {loading ? 'Processing...' : 'Submit'}
-        </button>
-      </div>
+      )}
     </form>
   );
 };

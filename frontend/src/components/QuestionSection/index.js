@@ -17,7 +17,8 @@ const QuestionSection = ({
   const [parentName, setParentName] = useState(initialParentName);
   const [processingTime, setProcessingTime] = useState(null);
   const processingStartTime = useRef(null);
-  
+  const [isNewConversation, setIsNewConversation] = useState(true); // 新增状态
+
   const [dropdownValues, setDropdownValues] = useState({
     tone: 'balanced',
     detailLevel: 'moderate',
@@ -55,6 +56,7 @@ const QuestionSection = ({
     if (selectedHistoryQuestion?.isFromHistory && selectedHistoryQuestion.parent_name !== parentName) {
       setParentName(selectedHistoryQuestion.parent_name || '');
       wasSetFromHistory.current = true;
+      setIsNewConversation(false); // 加载历史记录时设置为非新会话
     }
   }, [selectedHistoryQuestion]);
 
@@ -131,6 +133,7 @@ const QuestionSection = ({
     wasSetFromHistory.current = false;
     setProcessingTime(null);
     processingStartTime.current = null;
+    setIsNewConversation(true); // 设置为新会话
     onNewConversation();
   }, [onNewConversation]);
 
@@ -140,10 +143,6 @@ const QuestionSection = ({
       [menu]: e.target.value
     }));
   }, []);
-
-  const responseStyleMenus = [
-    // ... (unchanged)
-  ];
 
   const formatProcessingTime = (ms) => {
     if (ms === null) return '';
@@ -193,9 +192,9 @@ const QuestionSection = ({
           loading={localLoading || isGenerating}
           onClear={handleClear}
           isHistoricalQuestion={selectedHistoryQuestion?.isFromHistory}
+          isNewConversation={isNewConversation} // 传递新会话状态
         />
 
-        {/* Processing time indicator */}
         {(isGenerating || processingTime !== null) && (
           <div className="mt-3 flex items-center">
             <div className="flex items-center">

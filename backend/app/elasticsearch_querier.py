@@ -1,18 +1,19 @@
 ## app\elasticsearch_querier.py
 
-import json
 import os
-import logging
-import pickle
-import faiss
-import numpy as np
-import pandas as pd
+from dotenv import load_dotenv  # 导入 load_dotenv
 from typing import List, Dict, Any, Tuple
 from elasticsearch import Elasticsearch
 from openai import OpenAI
 from sentence_transformers import SentenceTransformer
 from app import real_conversation_analysis as rca
+import logging
+import pandas as pd
+import pickle
+import numpy as np
 
+# 加载 .env 文件中的环境变量
+load_dotenv()
 
 # Set up logging
 logging.basicConfig(
@@ -50,7 +51,7 @@ class ElasticsearchQuerier:
                 raise ValueError("OpenAI API key not found in environment variables")
 
             self.grok_client = OpenAI(api_key=os.getenv("XAI_API_KEY"),
-            base_url="https://api.x.ai/v1")
+                                     base_url="https://api.x.ai/v1")
             if not os.getenv("XAI_API_KEY"):
                 raise ValueError("xAI API key not found in environment variables")
                     
