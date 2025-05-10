@@ -391,14 +391,14 @@ export const AnswerSection = ({
             Welcome to a New Conversation
           </h3>
           <p className="text-gray-700 mb-4">
-            Please enter your question in the input area to get a response from the AI.
+            Simplely paste patient's question in the input area to get a response from the VineAI.
           </p>
           <div className="text-gray-600 text-sm">
             <p className="mb-2">Tips:</p>
             <ul className="text-left list-disc pl-5 space-y-1">
-              <li>Be specific with your questions for more accurate answers</li>
-              <li>You can provide context by mentioning relevant details</li>
-              <li>Enter a parent name if needed for family-related questions</li>
+              <li>You don't have to choose the answer version now, VineAI will provide both when generate</li>
+              <li>It may take one minute to search the database and generate the final answer - please be patient and it will be worth it</li>
+
             </ul>
           </div>
         </div>

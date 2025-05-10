@@ -155,23 +155,23 @@ const QuestionSection = ({
   }, []);
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm pl-16 ${className}`}>
-      <div className={`p-4 transition-all duration-200 ${
+    <div className={`bg-white rounded-lg shadow-sm pl-10 ${className}`}>
+      <div className={`p-3 transition-all duration-200 ${
         localLoading || isGenerating ? 'opacity-50' : 'opacity-100'
       }`}>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Questions Enter</h2>
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-lg font-bold">Questions Entry</h2>
           <button
             onClick={handleNewConversation}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200"
+            className="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors duration-200 text-sm"
             disabled={localLoading || isGenerating}
           >
             New Conversation
           </button>
         </div>
-        
-        <div className="mb-4 flex items-center gap-4">
-          <label htmlFor="parentName" className="text-sm font-medium text-gray-700 whitespace-nowrap min-w-[100px]">
+
+        <div className="mb-3 flex items-center gap-3">
+          <label htmlFor="parentName" className="text-sm font-medium text-gray-700 whitespace-nowrap min-w-[80px]">
             Parent Name
           </label>
           <input
@@ -180,11 +180,11 @@ const QuestionSection = ({
             value={parentName}
             onChange={(e) => setParentName(e.target.value)}
             disabled={localLoading || isGenerating}
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
             placeholder="Enter parent's name"
           />
         </div>
-        
+
         <QuestionInput
           value={question}
           onChange={handleQuestionChange}
@@ -192,19 +192,19 @@ const QuestionSection = ({
           loading={localLoading || isGenerating}
           onClear={handleClear}
           isHistoricalQuestion={selectedHistoryQuestion?.isFromHistory}
-          isNewConversation={isNewConversation} // 传递新会话状态
+          isNewConversation={isNewConversation}
         />
 
         {(isGenerating || processingTime !== null) && (
-          <div className="mt-3 flex items-center">
+          <div className="mt-2 flex items-center">
             <div className="flex items-center">
               {isGenerating ? (
                 <>
-                  <div className="animate-spin mr-2 h-4 w-4 border-2 border-blue-500 rounded-full border-t-transparent"></div>
-                  <span className="text-sm text-gray-600">Processing...</span>
+                  <div className="animate-spin mr-1 h-3 w-3 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+                  <span className="text-xs text-gray-600">Processing...</span>
                 </>
               ) : processingTime !== null ? (
-                <div className="text-sm text-gray-600">
+                <div className="text-xs text-gray-600">
                   <span className="font-medium">Processing time:</span> {formatProcessingTime(processingTime)}
                 </div>
               ) : null}
@@ -212,41 +212,62 @@ const QuestionSection = ({
           </div>
         )}
 
-        <p className="mt-4 text-sm text-gray-500">
-          Adjust these options to customize how the response is written and formatted.
+<div className="mt-4">
+  <h1 className="text-2xl font-bold text-gray-900 mb-4">How VineAI Works</h1>
+
+  {/* Section 1: Conversation Options */}
+  <div className="bg-gray-50 rounded-lg p-4 mb-4">
+    <h2 className="text-lg font-semibold text-gray-800 mb-2">
+      When Pasting Patient Questions Into Above: Conversation Options Toggle:
+    </h2>
+    <ul className="space-y-3">
+      <li>
+        <h3 className="text-sm font-medium text-gray-800 flex items-center">
+          <span className="mr-2 text-blue-500">•</span> Continue
+        </h3>
+        <p className="text-sm text-gray-600 ml-4">
+          Uses real case analysis to address unclarified questions, ensuring a an empathetic, caring and professional conversation.
         </p>
+      </li>
+      <li>
+        <h3 className="text-sm font-medium text-gray-800 flex items-center">
+          <span className="mr-2 text-blue-500">•</span> Close
+        </h3>
+        <p className="text-sm text-gray-600 ml-4">
+        Courteously ends the conversation to minimize your workload and streamlining your workflow.
+        </p>
+      </li>
+    </ul>
+  </div>
 
-        <div className="mt-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Placeholder Section 1</h1>
-          <p className="text-sm text-gray-600 mb-4">
-            Placeholder description for Section 1. This will be replaced with actual content.
-          </p>
-          
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">Placeholder Subsection 1.1</h2>
-          <p className="text-sm text-gray-600 mb-4">
-            Placeholder description for Subsection 1.1. This will be replaced with actual content.
-          </p>
-          
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">Placeholder Subsection 1.2</h2>
-          <p className="text-sm text-gray-600 mb-4">
-            Placeholder description for Subsection 1.2. This will be replaced with actual content.
-          </p>
+  {/* Divider */}
+  <hr className="border-gray-200 my-4" />
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Placeholder Section 2</h1>
-          <p className="text-sm text-gray-600 mb-4">
-            Placeholder description for Section 2. This will be replaced with actual content.
-          </p>
-          
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">Placeholder Subsection 2.1</h2>
-          <p className="text-sm text-gray-600 mb-4">
-            Placeholder description for Subsection 2.1. This will be replaced with actual content.
-          </p>
-          
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">Placeholder Subsection 2.2</h2>
-          <p className="text-sm text-gray-600 mb-4">
-            Placeholder description for Subsection 2.2. This will be replaced with actual content.
-          </p>
-        </div>
+  {/* Section 2: Answer Versions */}
+  <div className="bg-gray-50 rounded-lg p-4">
+    <h2 className="text-lg font-semibold text-gray-800 mb-2">
+      When Selecting the Response Version From Dropdown:
+    </h2>
+    <ul className="space-y-3">
+      <li>
+        <h3 className="text-sm font-medium text-gray-800 flex items-center">
+          <span className="mr-2 text-blue-500">•</span> Simplified Version
+        </h3>
+        <p className="text-sm text-gray-600 ml-4">
+          Analyzes 60,000 doctor-parent dialogues to deliver concise, copy-paste-ready responses with the perfect tone.
+        </p>
+      </li>
+      <li>
+        <h3 className="text-sm font-medium text-gray-800 flex items-center">
+          <span className="mr-2 text-blue-500">•</span> Detailed Version
+        </h3>
+        <p className="text-sm text-gray-600 ml-4">
+          Provides comprehensive, hallucination-free medical information for quick reference and confident decision-making.
+        </p>
+      </li>
+    </ul>
+  </div>
+</div>
       </div>
     </div>
   );
