@@ -16,7 +16,7 @@ import {
 import { useAuth } from '../../lib/hooks/useAuth';
 import { getQuestionHistory, deleteQuestion, getQuestionDetails } from '../../services/questionApi';
 
-const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
+const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect, currentQuestionId }) => {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
   const [questions, setQuestions] = useState([]);
@@ -122,6 +122,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
 
   const handleDeleteQuestion = async (questionId, event) => {
     event.stopPropagation();
+    console.log('🗑️ Initiating delete for question:', questionId);
     setQuestionToDelete(questionId);
     setShowConfirmModal(true);
   };
@@ -129,9 +130,16 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
   const confirmDelete = async () => {
     if (questionToDelete) {
       try {
+        console.log('🗑️ Confirming delete for question:', questionToDelete);
         await deleteQuestion(questionToDelete);
         questionCache.current.delete(questionToDelete);
         setQuestions(questions.filter((q) => q.id !== questionToDelete));
+        if (onQuestionSelect && questionToDelete === currentQuestionId) {
+          console.log('🧹 Deleting current question, clearing question and answer sections');
+          onQuestionSelect(null); // 仅当删除当前问题时清空
+        } else {
+          console.log('🗑️ Deleting non-current question, preserving current sections');
+        }
       } catch (error) {
         console.error('Failed to delete question:', error);
       }
@@ -141,6 +149,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
   };
 
   const cancelDelete = () => {
+    console.log('🚫 Cancelled delete action');
     setShowConfirmModal(false);
     setQuestionToDelete(null);
   };

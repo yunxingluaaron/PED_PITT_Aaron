@@ -74,6 +74,11 @@ const DashboardLayout = () => {
 
   const handleQuestionSelect = (question) => {
     console.log('🔵 handleQuestionSelect called with:', question);
+    if (!question) {
+      console.log('🔵 Clearing question and answer sections');
+      handleNewConversation();
+      return;
+    }
     if (question.isFromHistory) {
       console.log('🔵 Processing historical question');
       setCurrentAnswer({
@@ -210,17 +215,11 @@ const DashboardLayout = () => {
       if (answer.parent_name) {
         setParentName(answer.parent_name);
       }
-      // if (answer.conversation_action === 'close') {
-      //   console.log('🔴 Closing conversation in handleAnswerGenerated, delaying reset');
-      //   setTimeout(() => {
-      //     console.log('🔴 Executing delayed conversation reset');
-      //     handleNewConversation();
-      //   }, 2000); // 增加延迟到 1000ms
-      // }
+
       setTimeout(() => {
         console.log('🔍 Dispatching questionAdded event');
         window.dispatchEvent(new Event('questionAdded'));
-      }, 1000); // 延迟 1000ms
+      }, 1000);
     }
   }, [handleNewConversation]);
 
@@ -291,6 +290,7 @@ const DashboardLayout = () => {
           isCollapsed={isCollapsed}
           toggleSidebar={toggleSidebar}
           onQuestionSelect={handleQuestionSelect}
+          currentQuestionId={currentQuestionId}
         />
       </div>
 
