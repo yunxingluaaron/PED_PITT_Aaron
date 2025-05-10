@@ -101,16 +101,16 @@ const QuestionInput = ({
       {/* 仅在新会话时显示按钮 */}
       {isNewConversation && (
         <div className="absolute bottom-3 right-3 flex gap-2">
-          {value && (
-            <button
-              type="button"
-              onClick={handleClear}
-              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-              disabled={loading}
-            >
-              Clear
-            </button>
-          )}
+          {/* {value && (
+            // <button
+            //   type="button"
+            //   onClick={handleClear}
+            //   className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+            //   disabled={loading}
+            // >
+            //   Clear
+            // </button>
+          )} */}
           <button
             type="submit"
             className={`px-4 py-1 rounded-md ${

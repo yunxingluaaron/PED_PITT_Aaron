@@ -21,14 +21,15 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
   const { logout, user } = useAuth();
   const [questions, setQuestions] = useState([]);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(true);
-  const [loading, setLoading] = useState(false); // 初始不显示加载
-  const questionCache = useRef(new Map()); // 缓存历史记录
+  const [loading, setLoading] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [questionToDelete, setQuestionToDelete] = useState(null);
+  const questionCache = useRef(new Map());
 
   const loadQuestionHistory = useCallback(
     debounce(async (force = false) => {
       if (isCollapsed) return;
 
-      // 检查缓存
       if (!force && questionCache.current.size > 0) {
         console.log('🔍 Loading question history from cache');
         setQuestions(
@@ -57,7 +58,6 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
             }
           })
         );
-        // 更新缓存
         enrichedData.forEach((q) => questionCache.current.set(q.id, q));
         setQuestions(
           enrichedData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
@@ -67,7 +67,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
       } finally {
         setLoading(false);
       }
-    }, 500), // 500ms 防抖
+    }, 500),
     [isCollapsed]
   );
 
@@ -78,12 +78,12 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
   useEffect(() => {
     const handleQuestionAdded = () => {
       console.log('🔍 questionAdded event received, forcing history reload');
-      loadQuestionHistory(true); // 强制刷新，忽略缓存
+      loadQuestionHistory(true);
     };
     window.addEventListener('questionAdded', handleQuestionAdded);
     return () => {
       window.removeEventListener('questionAdded', handleQuestionAdded);
-      loadQuestionHistory.cancel(); // 取消防抖
+      loadQuestionHistory.cancel();
     };
   }, [loadQuestionHistory]);
 
@@ -122,13 +122,27 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
 
   const handleDeleteQuestion = async (questionId, event) => {
     event.stopPropagation();
-    try {
-      await deleteQuestion(questionId);
-      questionCache.current.delete(questionId); // 从缓存中移除
-      setQuestions(questions.filter((q) => q.id !== questionId));
-    } catch (error) {
-      console.error('Failed to delete question:', error);
+    setQuestionToDelete(questionId);
+    setShowConfirmModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (questionToDelete) {
+      try {
+        await deleteQuestion(questionToDelete);
+        questionCache.current.delete(questionToDelete);
+        setQuestions(questions.filter((q) => q.id !== questionToDelete));
+      } catch (error) {
+        console.error('Failed to delete question:', error);
+      }
     }
+    setShowConfirmModal(false);
+    setQuestionToDelete(null);
+  };
+
+  const cancelDelete = () => {
+    setShowConfirmModal(false);
+    setQuestionToDelete(null);
   };
 
   const menuItems = [
@@ -196,7 +210,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
 
           {isHistoryExpanded && (
             <div className="mt-2 space-y-1 max-h-[300px] overflow-y-auto">
-              {loading && questions.length === 0 ? ( // 仅在无数据时显示加载
+              {loading && questions.length === 0 ? (
                 <div className="text-sm text-gray-500 px-2">Loading...</div>
               ) : questions.length === 0 ? (
                 <div className="text-sm text-gray-500 px-2">No questions yet</div>
@@ -240,6 +254,31 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect }) => {
           </button>
         </div>
       </div>
+
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Confirm Deletion</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete this question? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={cancelDelete}
+                className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 text-sm text-white bg-red-600 rounded-md hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
