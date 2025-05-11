@@ -25,6 +25,9 @@ const QuestionSection = ({
     empathy: 'moderate',
     professionalStyle: 'clinicallyBalanced'
   });
+  const [isSubmitDisabled, setIsSubmitDisabled] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [isInputLocked, setIsInputLocked] = useState(false);
 
   useEffect(() => {
     console.log('🟡 QuestionSection mounted');
@@ -40,6 +43,8 @@ const QuestionSection = ({
       const timeTaken = endTime - processingStartTime.current;
       setProcessingTime(timeTaken);
       processingStartTime.current = null;
+      setIsSubmitDisabled(true);
+      setIsInputLocked(true);
     }
   }, [isGenerating]);
 
@@ -57,6 +62,9 @@ const QuestionSection = ({
         empathy: 'moderate',
         professionalStyle: 'clinicallyBalanced'
       });
+      setIsSubmitDisabled(false);
+      setIsInputLocked(false);
+      setShowTooltip(false);
       wasSetFromHistory.current = false;
     };
 
@@ -76,6 +84,8 @@ const QuestionSection = ({
       setParentName(selectedHistoryQuestion.parent_name || '');
       wasSetFromHistory.current = true;
       setIsNewConversation(false);
+      setIsSubmitDisabled(false);
+      setIsInputLocked(true);
     }
   }, [selectedHistoryQuestion]);
 
@@ -87,6 +97,7 @@ const QuestionSection = ({
       setQuestion('');
       wasSetFromHistory.current = false;
       setIsNewConversation(true);
+      setIsInputLocked(false);
     }
   }, [initialQuestion, question]);
 
@@ -138,6 +149,7 @@ const QuestionSection = ({
     setQuestion('');
     wasSetFromHistory.current = false;
     setIsNewConversation(true);
+    setIsInputLocked(false);
     if (selectedHistoryQuestion) {
       const responseStyleParameters = {
         tone: dropdownValues.tone,
@@ -156,6 +168,9 @@ const QuestionSection = ({
     setProcessingTime(null);
     processingStartTime.current = null;
     setIsNewConversation(true);
+    setIsSubmitDisabled(false);
+    setIsInputLocked(false);
+    setShowTooltip(false);
     onNewConversation();
   }, [onNewConversation]);
 
@@ -215,7 +230,19 @@ const QuestionSection = ({
           onClear={handleClear}
           isHistoricalQuestion={selectedHistoryQuestion?.isFromHistory}
           isNewConversation={isNewConversation}
+          isSubmitDisabled={isSubmitDisabled}
+          isInputLocked={isInputLocked}
+          setShowTooltip={setShowTooltip}
         />
+
+        {showTooltip && isInputLocked && (
+          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md text-blue-600 text-sm font-normal shadow-sm transition-opacity duration-200">
+            <ul className="list-disc pl-4 space-y-1">
+              <li>Current version does not support modifying the entered question, please initiate a new conversation.</li>
+              <li>You can modify the generated answer on the right side.</li>
+            </ul>
+          </div>
+        )}
 
         {(isGenerating || processingTime !== null) && (
           <div className="mt-2 flex items-center">

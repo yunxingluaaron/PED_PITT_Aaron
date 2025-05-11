@@ -7,7 +7,10 @@ const QuestionInput = ({
   loading,
   onClear,
   isHistoricalQuestion,
-  isNewConversation // 新增 prop
+  isNewConversation,
+  isSubmitDisabled,
+  isInputLocked,
+  setShowTooltip // 新增 prop
 }) => {
   const prevProps = useRef({ value, loading, isHistoricalQuestion });
   const [conversationAction, setConversationAction] = useState('continue');
@@ -31,8 +34,8 @@ const QuestionInput = ({
     e.preventDefault();
     console.log('🟢 handleSubmit called with value:', value, 'conversationAction:', conversationAction);
     
-    if (!value.trim() || loading) {
-      console.log('🟢 Submission blocked: empty value or loading');
+    if (!value.trim() || loading || isSubmitDisabled) {
+      console.log('🟢 Submission blocked: empty value, loading, or submit disabled');
       return;
     }
     
@@ -66,8 +69,9 @@ const QuestionInput = ({
         } ${isHistoricalQuestion ? 'border-blue-300' : 'border-gray-300'}`}
         disabled={loading}
         rows={12}
+        onMouseEnter={() => isInputLocked && setShowTooltip(true)}
+        onMouseLeave={() => isInputLocked && setShowTooltip(false)}
       />
-      {/* 仅在新会话时显示切换开关 */}
       {isNewConversation && (
         <div className="absolute bottom-3 left-3">
           <div className="flex items-center bg-gray-200 rounded-full p-1 w-64">
@@ -98,29 +102,18 @@ const QuestionInput = ({
           </div>
         </div>
       )}
-      {/* 仅在新会话时显示按钮 */}
       {isNewConversation && (
         <div className="absolute bottom-3 right-3 flex gap-2">
-          {/* {value && (
-            // <button
-            //   type="button"
-            //   onClick={handleClear}
-            //   className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-            //   disabled={loading}
-            // >
-            //   Clear
-            // </button>
-          )} */}
           <button
             type="submit"
             className={`px-4 py-1 rounded-md ${
-              loading
+              loading || isSubmitDisabled
                 ? 'bg-gray-400 cursor-not-allowed'
                 : isHistoricalQuestion
                 ? 'bg-blue-500 hover:bg-blue-600'
                 : 'bg-green-500 hover:bg-green-600'
             } text-white`}
-            disabled={!value.trim() || loading}
+            disabled={!value.trim() || loading || isSubmitDisabled}
           >
             {loading ? 'Processing...' : 'Submit'}
           </button>
