@@ -1148,9 +1148,14 @@ def generate_response(query: str, textbook_info: str, examples: List[Tuple[str, 
 
     if conversation_action == "close":
         closing_instruction = (
-            "End the conversation politely without asking questions or suggesting further interaction. "
-            "Include a closing statement like: 'I hope this addresses your concerns.'"
-        )
+        "End the conversation politely without asking questions or suggesting further interaction. "
+        "Choose one of the following closing statements:\n"
+        "- I hope this addresses your concerns.\n"
+        "- We appreciate your questions and are committed to your child's well-being. We hope this information supports your family.\n"
+        "- We hope this advice helps and we're always here for any further concerns.\n"
+        "- We hope this answers your concerns and brings you comfort.\n"
+        "- We hope this information is helpful and wish your family all the best."
+    )
         prompt += f"\n{closing_instruction}"
 
     # Log the constructed prompt for debugging
