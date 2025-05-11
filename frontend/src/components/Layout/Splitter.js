@@ -4,13 +4,23 @@ const Splitter = ({ onDrag, initialPosition, minPosition, maxPosition, container
   const [position, setPosition] = useState(initialPosition);
   const [isDragging, setIsDragging] = useState(false);
 
-  // 验证传入的 props 是否有效
+  // Sync initialPosition changes
+  useEffect(() => {
+    const constrainedPosition = Math.max(minPosition, Math.min(maxPosition, initialPosition));
+    setPosition(constrainedPosition);
+    console.log(`[${new Date().toISOString()}] Splitter: Updated position to`, constrainedPosition, 'due to initialPosition change', {
+      initialPosition,
+      minPosition,
+      maxPosition,
+    });
+  }, [initialPosition, minPosition, maxPosition]);
+
   useEffect(() => {
     if (typeof initialPosition !== 'number' || typeof minPosition !== 'number' || typeof maxPosition !== 'number') {
-      console.error('Invalid Splitter props:', { initialPosition, minPosition, maxPosition });
+      console.error(`[${new Date().toISOString()}] Invalid Splitter props:`, { initialPosition, minPosition, maxPosition });
     }
     if (initialPosition < minPosition || initialPosition > maxPosition) {
-      console.warn('Initial position is out of bounds, clamping to valid range');
+      console.warn(`[${new Date().toISOString()}] Initial position is out of bounds, clamping to valid range`);
       setPosition(Math.max(minPosition, Math.min(maxPosition, initialPosition)));
     }
   }, [initialPosition, minPosition, maxPosition]);
@@ -22,6 +32,13 @@ const Splitter = ({ onDrag, initialPosition, minPosition, maxPosition, container
         const constrainedPosition = Math.max(minPosition, Math.min(maxPosition, newPosition));
         setPosition(constrainedPosition);
         onDrag(constrainedPosition);
+        console.log(`[${new Date().toISOString()}] Splitter: Dragging, new position:`, constrainedPosition, {
+          clientX: e.clientX,
+          containerOffset,
+          minPosition,
+          maxPosition,
+          isDragging,
+        });
       }
     },
     [isDragging, minPosition, maxPosition, containerOffset, onDrag]
@@ -29,6 +46,7 @@ const Splitter = ({ onDrag, initialPosition, minPosition, maxPosition, container
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
+    console.log(`[${new Date().toISOString()}] Splitter: Drag ended`);
   }, []);
 
   useEffect(() => {
@@ -45,6 +63,7 @@ const Splitter = ({ onDrag, initialPosition, minPosition, maxPosition, container
   const handleMouseDown = (e) => {
     setIsDragging(true);
     e.preventDefault();
+    console.log(`[${new Date().toISOString()}] Splitter: Drag started`);
   };
 
   return (

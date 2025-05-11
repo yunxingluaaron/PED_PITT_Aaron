@@ -18,7 +18,7 @@ const ResizablePanel = ({
       height={height}
       onResize={onResize}
       minConstraints={minConstraints}
-      maxConstraints={maxConstraints}
+      maxConstraints={[Math.min(maxConstraints[0], window.innerWidth - (minConstraints[0] + 256)), maxConstraints[1]]}
       resizeHandles={resizeHandles}
       className="relative"
     >

@@ -136,7 +136,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar, onQuestionSelect, currentQuestion
         setQuestions(questions.filter((q) => q.id !== questionToDelete));
         if (onQuestionSelect && questionToDelete === currentQuestionId) {
           console.log('🧹 Deleting current question, clearing question and answer sections');
-          onQuestionSelect(null); // 仅当删除当前问题时清空
+          onQuestionSelect(null);
         } else {
           console.log('🗑️ Deleting non-current question, preserving current sections');
         }
