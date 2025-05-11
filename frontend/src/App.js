@@ -117,15 +117,24 @@ const DashboardLayout = () => {
     setIsGenerating(false);
 
     const answerSection = document.getElementById('answer-section');
+    const questionSection = document.getElementById('question-section');
+    const resetEvent = new CustomEvent('resetConversation', {
+      detail: { timestamp: Date.now(), resetToNew: true }
+    });
+
     if (answerSection) {
       console.log('🔵 Dispatching resetConversation event to AnswerSection');
-      const resetEvent = new CustomEvent('resetConversation', {
-        detail: { timestamp: Date.now() },
-      });
       answerSection.dispatchEvent(resetEvent);
     } else {
       console.warn('🔵 Could not find answer-section element');
     }
+    if (questionSection) {
+      console.log('🔵 Dispatching resetConversation event to QuestionSection');
+      questionSection.dispatchEvent(resetEvent);
+    } else {
+      console.warn('🔵 Could not find question-section element');
+    }
+    console.log('🔵 Dispatching global conversationReset event');
     window.dispatchEvent(new Event('conversationReset'));
   }, []);
 

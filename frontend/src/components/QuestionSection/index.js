@@ -17,8 +17,8 @@ const QuestionSection = ({
   const [parentName, setParentName] = useState(initialParentName);
   const [processingTime, setProcessingTime] = useState(null);
   const processingStartTime = useRef(null);
-  const [isNewConversation, setIsNewConversation] = useState(true); // 新增状态
-
+  const [isNewConversation, setIsNewConversation] = useState(true);
+  const sectionRef = useRef(null);
   const [dropdownValues, setDropdownValues] = useState({
     tone: 'balanced',
     detailLevel: 'moderate',
@@ -44,28 +44,49 @@ const QuestionSection = ({
   }, [isGenerating]);
 
   useEffect(() => {
-    const handleConversationReset = () => {
+    const handleConversationReset = (event) => {
+      console.log('🟡 QuestionSection received resetConversation event:', event.detail);
       setProcessingTime(null);
       processingStartTime.current = null;
+      setQuestion('');
+      setParentName('');
+      setIsNewConversation(true);
+      setDropdownValues({
+        tone: 'balanced',
+        detailLevel: 'moderate',
+        empathy: 'moderate',
+        professionalStyle: 'clinicallyBalanced'
+      });
+      wasSetFromHistory.current = false;
     };
-    window.addEventListener('conversationReset', handleConversationReset);
-    return () => window.removeEventListener('conversationReset', handleConversationReset);
+
+    const sectionElement = sectionRef.current;
+    if (sectionElement) {
+      sectionElement.addEventListener('resetConversation', handleConversationReset);
+    }
+    return () => {
+      if (sectionElement) {
+        sectionElement.removeEventListener('resetConversation', handleConversationReset);
+      }
+    };
   }, []);
 
   useEffect(() => {
     if (selectedHistoryQuestion?.isFromHistory && selectedHistoryQuestion.parent_name !== parentName) {
       setParentName(selectedHistoryQuestion.parent_name || '');
       wasSetFromHistory.current = true;
-      setIsNewConversation(false); // 加载历史记录时设置为非新会话
+      setIsNewConversation(false);
     }
   }, [selectedHistoryQuestion]);
 
   useEffect(() => {
     if (initialQuestion && initialQuestion !== question) {
       setQuestion(initialQuestion);
+      setIsNewConversation(false);
     } else if (!initialQuestion && question && wasSetFromHistory.current) {
       setQuestion('');
       wasSetFromHistory.current = false;
+      setIsNewConversation(true);
     }
   }, [initialQuestion, question]);
 
@@ -116,6 +137,7 @@ const QuestionSection = ({
   const handleClear = useCallback(() => {
     setQuestion('');
     wasSetFromHistory.current = false;
+    setIsNewConversation(true);
     if (selectedHistoryQuestion) {
       const responseStyleParameters = {
         tone: dropdownValues.tone,
@@ -133,7 +155,7 @@ const QuestionSection = ({
     wasSetFromHistory.current = false;
     setProcessingTime(null);
     processingStartTime.current = null;
-    setIsNewConversation(true); // 设置为新会话
+    setIsNewConversation(true);
     onNewConversation();
   }, [onNewConversation]);
 
@@ -155,7 +177,7 @@ const QuestionSection = ({
   }, []);
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm pl-10 ${className}`}>
+    <div id="question-section" ref={sectionRef} className={`bg-white rounded-lg shadow-sm pl-10 ${className}`}>
       <div className={`p-3 transition-all duration-200 ${
         localLoading || isGenerating ? 'opacity-50' : 'opacity-100'
       }`}>
@@ -212,62 +234,59 @@ const QuestionSection = ({
           </div>
         )}
 
-<div className="mt-4">
-  <h1 className="text-2xl font-bold text-gray-900 mb-4">How VineAI Works</h1>
+        <div className="mt-4">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">How VineAI Works</h1>
 
-  {/* Section 1: Conversation Options */}
-  <div className="bg-gray-50 rounded-lg p-4 mb-4">
-    <h2 className="text-lg font-semibold text-gray-800 mb-2">
-      When Pasting Patient Questions Into Above: Conversation Options Toggle:
-    </h2>
-    <ul className="space-y-3">
-      <li>
-        <h3 className="text-sm font-medium text-gray-800 flex items-center">
-          <span className="mr-2 text-blue-500">•</span> Continue
-        </h3>
-        <p className="text-sm text-gray-600 ml-4">
-          Uses real case analysis to address unclarified questions, ensuring a an empathetic, caring and professional conversation.
-        </p>
-      </li>
-      <li>
-        <h3 className="text-sm font-medium text-gray-800 flex items-center">
-          <span className="mr-2 text-blue-500">•</span> Close
-        </h3>
-        <p className="text-sm text-gray-600 ml-4">
-        Courteously ends the conversation to minimize your workload and streamlining your workflow.
-        </p>
-      </li>
-    </ul>
-  </div>
+          <div className="bg-gray-50 rounded-lg p-4 mb-4">
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">
+              When Pasting Patient Questions Into Above: Conversation Options Toggle:
+            </h2>
+            <ul className="space-y-3">
+              <li>
+                <h3 className="text-sm font-medium text-gray-800 flex items-center">
+                  <span className="mr-2 text-blue-500">•</span> Continue
+                </h3>
+                <p className="text-sm text-gray-600 ml-4">
+                  Uses real case analysis to address unclarified questions, ensuring an empathetic, caring and professional conversation.
+                </p>
+              </li>
+              <li>
+                <h3 className="text-sm font-medium text-gray-800 flex items-center">
+                  <span className="mr-2 text-blue-500">•</span> Close
+                </h3>
+                <p className="text-sm text-gray-600 ml-4">
+                  Courteously ends the conversation to minimize your workload and streamline your workflow.
+                </p>
+              </li>
+            </ul>
+          </div>
 
-  {/* Divider */}
-  <hr className="border-gray-200 my-4" />
+          <hr className="border-gray-200 my-4" />
 
-  {/* Section 2: Answer Versions */}
-  <div className="bg-gray-50 rounded-lg p-4">
-    <h2 className="text-lg font-semibold text-gray-800 mb-2">
-      When Selecting the Response Version From Dropdown:
-    </h2>
-    <ul className="space-y-3">
-      <li>
-        <h3 className="text-sm font-medium text-gray-800 flex items-center">
-          <span className="mr-2 text-blue-500">•</span> Simplified Version
-        </h3>
-        <p className="text-sm text-gray-600 ml-4">
-          Analyzes 60,000 doctor-parent dialogues to deliver concise, copy-paste-ready responses with the perfect tone.
-        </p>
-      </li>
-      <li>
-        <h3 className="text-sm font-medium text-gray-800 flex items-center">
-          <span className="mr-2 text-blue-500">•</span> Detailed Version
-        </h3>
-        <p className="text-sm text-gray-600 ml-4">
-          Provides comprehensive, hallucination-free medical information for quick reference and confident decision-making.
-        </p>
-      </li>
-    </ul>
-  </div>
-</div>
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">
+              When Selecting the Response Version From Dropdown:
+            </h2>
+            <ul className="space-y-3">
+              <li>
+                <h3 className="text-sm font-medium text-gray-800 flex items-center">
+                  <span className="mr-2 text-blue-500">•</span> Simplified Version
+                </h3>
+                <p className="text-sm text-gray-600 ml-4">
+                  Analyzes 60,000 doctor-parent dialogues to deliver concise, copy-paste-ready responses with the perfect tone.
+                </p>
+              </li>
+              <li>
+                <h3 className="text-sm font-medium text-gray-800 flex items-center">
+                  <span className="mr-2 text-blue-500">•</span> Detailed Version
+                </h3>
+                <p className="text-sm text-gray-600 ml-4">
+                  Provides comprehensive, hallucination-free medical information for quick reference and confident decision-making.
+                </p>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );

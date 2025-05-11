@@ -57,6 +57,7 @@ export const AnswerSection = ({
   const currentVersion = getCurrentVersion();
   const [processingStartTime, setProcessingStartTime] = useState(null);
   const [processingTime, setProcessingTime] = useState(null);
+  const sectionRef = useRef(null); // Added for DOM event binding
 
   useEffect(() => {
     if (isGenerating && !loading && processingStartTime === null) {
@@ -75,24 +76,48 @@ export const AnswerSection = ({
   }, [isGenerating, loading]);
 
   useEffect(() => {
+    const handleResetConversation = (event) => {
+      console.log('🟣 AnswerSection received resetConversation event:', event.detail);
+      setEditorContent('');
+      setOriginalContent('');
+      setIsNewConversation(true);
+      setCurrentParentName('');
+      setResponseMode('simplified');
+      setShowComparison(false);
+      setProcessingTime(null);
+      setProcessingStartTime(null);
+      clearAnswer();
+      setCurrentVersionId(null);
+      resetVersionHistory();
+      initialLoadDone.current = false;
+      processedQuestionRef.current = '';
+    };
+
+    const sectionElement = sectionRef.current;
+    if (sectionElement) {
+      console.log('🟣 AnswerSection - Adding resetConversation event listener');
+      sectionElement.addEventListener('resetConversation', handleResetConversation);
+    } else {
+      console.warn('🟣 AnswerSection - Could not find answer-section element');
+    }
+
+    return () => {
+      if (sectionElement) {
+        console.log('🟣 AnswerSection - Removing resetConversation event listener');
+        sectionElement.removeEventListener('resetConversation', handleResetConversation);
+      }
+    };
+  }, [clearAnswer, resetVersionHistory]);
+
+  useEffect(() => {
+    // Remove redundant globalResetConversation listener
     const handleResetConversation = () => {
       setProcessingTime(null);
       setProcessingStartTime(null);
     };
 
-    const answerSectionElement = document.getElementById('answer-section');
-    if (answerSectionElement) {
-      answerSectionElement.addEventListener('resetConversation', handleResetConversation);
-    }
-
     window.addEventListener('globalResetConversation', handleResetConversation);
-
-    return () => {
-      if (answerSectionElement) {
-        answerSectionElement.removeEventListener('resetConversation', handleResetConversation);
-      }
-      window.removeEventListener('globalResetConversation', handleResetConversation);
-    };
+    return () => window.removeEventListener('globalResetConversation', handleResetConversation);
   }, []);
 
   const formatProcessingTime = (ms) => {
@@ -100,36 +125,6 @@ export const AnswerSection = ({
     if (ms < 1000) return `${ms}ms`;
     return `${(ms / 1000).toFixed(2)}s`;
   };
-
-  useEffect(() => {
-    const handleResetConversation = (event) => {
-      console.log('🔴 AnswerSection - Conversation reset received', event);
-      setEditorContent('');
-      setOriginalContent('');
-      setIsNewConversation(true);
-      setCurrentParentName('');
-      setResponseMode('simplified');
-      clearAnswer();
-      setCurrentVersionId(null);
-      resetVersionHistory();
-      console.log('🔴 AnswerSection - Conversation reset complete');
-    };
-
-    const answerSectionElement = document.getElementById('answer-section');
-    if (answerSectionElement) {
-      console.log('🔴 AnswerSection - Adding resetConversation event listener');
-      answerSectionElement.addEventListener('resetConversation', handleResetConversation);
-    } else {
-      console.warn('🔴 AnswerSection - Could not find answer-section element');
-    }
-
-    return () => {
-      if (answerSectionElement) {
-        console.log('🔴 AnswerSection - Removing resetConversation event listener');
-        answerSectionElement.removeEventListener('resetConversation', handleResetConversation);
-      }
-    };
-  }, [clearAnswer, resetVersionHistory]);
 
   useEffect(() => {
     if (parentName !== undefined && parentName !== currentParentName) {
@@ -146,7 +141,7 @@ export const AnswerSection = ({
       const { question, parameters, parentName: eventParentName, conversationAction } = event.detail;
       console.log('🔄 Received new question event:', event.detail);
   
-      setIsNewConversation(false); // 确保答案可以渲染
+      setIsNewConversation(false);
   
       if (eventParentName !== undefined) {
         setCurrentParentName(eventParentName);
@@ -167,23 +162,13 @@ export const AnswerSection = ({
               conversation_action: conversationAction
             });
           }
-          // 延迟重置，仅在关闭会话时
-          // if (conversationAction === 'close') {
-          //   console.log('🔴 Closing conversation, delaying reset');
-          //   setTimeout(() => {
-          //     console.log('🔴 Executing delayed conversation reset in AnswerSection');
-          //     setIsNewConversation(true);
-          //     clearAnswer();
-          //     resetVersionHistory();
-          //   }, 1000); // 增加延迟到 1000ms
-          // }
         }
       } catch (error) {
         console.error('❌ Error generating answer:', error);
       }
     };
   
-    const element = document.getElementById('answer-section');
+    const element = sectionRef.current;
     if (element) {
       element.addEventListener('newQuestion', handleNewQuestion);
       return () => {
@@ -191,8 +176,7 @@ export const AnswerSection = ({
       }
     }
   }, [generateAnswerFromQuestion, onAnswerGenerated, currentParentName]);
-  
-  // 优化渲染逻辑，确保答案优先显示
+
   useEffect(() => {
     let content = '';
     if (currentAnswer?.isHistoricalAnswer) {
@@ -206,7 +190,7 @@ export const AnswerSection = ({
       content = responseMode === 'detailed'
         ? (currentAnswer.detailed_response || 'Detailed response not available')
         : (currentAnswer.simple_response || currentAnswer.response || 'Simplified response not available');
-      setIsNewConversation(false); // 确保新答案显示
+      setIsNewConversation(false);
     } else if (answer && !isGenerating) {
       console.log('🤖 Processing new AI answer from useAnswerGeneration:', { answer, detailedResponse, simpleResponse });
       content = responseMode === 'detailed'
@@ -391,14 +375,13 @@ export const AnswerSection = ({
             Welcome to a New Conversation
           </h3>
           <p className="text-gray-700 mb-4">
-            Simplely paste patient's question in the input area to get a response from the VineAI.
+            Simply paste patient's question in the input area to get a response from the VineAI.
           </p>
           <div className="text-gray-600 text-sm">
             <p className="mb-2">Tips:</p>
             <ul className="text-left list-disc pl-5 space-y-1">
               <li>You don't have to choose the answer version now, VineAI will provide both when generate</li>
               <li>It may take one minute to search the database and generate the final answer - please be patient and it will be worth it</li>
-
             </ul>
           </div>
         </div>
@@ -411,7 +394,7 @@ export const AnswerSection = ({
   }
 
   return (
-    <div id="answer-section" className="h-full flex">
+    <div id="answer-section" ref={sectionRef} className="h-full flex">
       <div className="flex-1 flex flex-col">
         <div className="flex-1 p-4 overflow-hidden flex flex-col">
           <div className="flex flex-col mb-4">
@@ -458,7 +441,7 @@ export const AnswerSection = ({
                 <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
                 <div className="h-4 bg-gray-200 rounded w-1/2"></div>
               </div>
-            ) : !editorContent ? ( // 仅在 editorContent 为空时显示欢迎消息
+            ) : !editorContent ? (
               renderWelcomeMessage()
             ) : (
               <Editor
@@ -480,7 +463,7 @@ export const AnswerSection = ({
           metadata={metadata}
           onCopy={handleCopy}
           parentName={currentParentName}
-          disabled={!editorContent} // 禁用操作栏如果没有内容
+          disabled={!editorContent}
         />
         {showComparison && (
           <VersionComparison
