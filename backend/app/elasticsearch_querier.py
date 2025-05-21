@@ -81,14 +81,14 @@ class ElasticsearchQuerier:
         try:
             # Determine data path based on project structure
             base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            data_path = os.path.join(base_dir, 'app', 'step2', 'recovered_utf8_for_excel.csv')
+            data_path = os.path.join(base_dir, 'app', 'step2', 'fixed_cleaned_recovered_utf8_for_excel.csv')
             
             if os.path.exists(data_path):
                 logger.info(f"Found default conversation data at {data_path}")
                 self.load_conversation_data(data_path)
             else:
                 # Try alternative path if first one doesn't exist
-                alt_data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'step2', 'recovered_utf8_for_excel.csv')
+                alt_data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'step2', 'fixed_cleaned_recovered_utf8_for_excel.csv')
                 if os.path.exists(alt_data_path):
                     logger.info(f"Found default conversation data at alternative path {alt_data_path}")
                     self.load_conversation_data(alt_data_path)
@@ -135,7 +135,8 @@ class ElasticsearchQuerier:
         try:
             # Load dataset
             df = pd.read_csv(data_path, on_bad_lines='warn')
-            
+     
+
             # Clean data
             df = df.dropna(subset=['department', 'ask', 'answer'])
             df['department'] = df['department'].str.strip()
